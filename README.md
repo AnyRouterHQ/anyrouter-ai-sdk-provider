@@ -65,6 +65,28 @@ for await (const chunk of textStream) {
 }
 ```
 
+### Reasoning models
+
+Reasoning models (e.g. `deepseek/deepseek-r1`) return their thinking as a
+separate stream — the provider surfaces it as the AI SDK's standard reasoning
+parts, so `reasoning`/`reasoningText` and the full-stream `reasoning-*` parts
+work out of the box.
+
+```ts
+import { createAnyRouter } from "@anyr/ai-sdk-provider"
+import { generateText } from "ai"
+
+const anyrouter = createAnyRouter()
+
+const { text, reasoningText } = await generateText({
+  model: anyrouter("deepseek/deepseek-r1"),
+  prompt: "How many r's are in strawberry?",
+})
+
+console.log(reasoningText) // the model's chain of thought
+console.log(text) // the final answer
+```
+
 ### generateObject (structured output)
 
 ```ts

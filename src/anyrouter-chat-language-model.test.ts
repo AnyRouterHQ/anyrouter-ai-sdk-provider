@@ -136,6 +136,36 @@ describe("AnyRouterChatLanguageModel.doGenerate()", () => {
     expect(result.finishReason.unified).toBe("tool-calls")
   })
 
+  it("maps reasoning_content to a reasoning part before the text", async () => {
+    const ar = createAnyRouter({
+      apiKey: "test-test",
+      fetch: mockFetch({
+        id: "gen-reason",
+        model: "deepseek/deepseek-r1",
+        choices: [
+          {
+            message: { reasoning_content: "Step by step…", content: "42" },
+            finish_reason: "stop",
+          },
+        ],
+        usage: { prompt_tokens: 7, completion_tokens: 9 },
+      }),
+    })
+
+    const result = await ar("deepseek/deepseek-r1").doGenerate({
+      prompt: makePrompt("What is 6 times 7?"),
+    })
+
+    const reasoning = result.content.find((c) => c.type === "reasoning")
+    const text = result.content.find((c) => c.type === "text")
+    expect((reasoning as { text: string } | undefined)?.text).toBe("Step by step…")
+    expect((text as { text: string } | undefined)?.text).toBe("42")
+    // Reasoning must precede the answer.
+    expect(result.content.indexOf(reasoning as never)).toBeLessThan(
+      result.content.indexOf(text as never),
+    )
+  })
+
   it("throws APICallError on 401 with AnyRouter error envelope", async () => {
     const ar = createAnyRouter({
       apiKey: "test-bad",
@@ -370,5 +400,49 @@ describe("AnyRouterChatLanguageModel.doStream()", () => {
       (p): p is Extract<LanguageModelV3StreamPart, { type: "finish" }> => p.type === "finish",
     )
     expect(finish?.finishReason.unified).toBe("tool-calls")
+  })
+
+  it("emits reasoning parts before text and closes them once text begins", async () => {
+    const ar = createAnyRouter({
+      apiKey: "test-test",
+      fetch: mockSseFetch([
+        { choices: [{ delta: { reasoning_content: "Let me " }, finish_reason: null }] },
+        { choices: [{ delta: { reasoning_content: "think." }, finish_reason: null }] },
+        { choices: [{ delta: { content: "Answer" }, finish_reason: null }] },
+        {
+          choices: [{ delta: {}, finish_reason: "stop" }],
+          usage: { prompt_tokens: 5, completion_tokens: 3 },
+        },
+      ]),
+    })
+
+    const { stream } = await ar("deepseek/deepseek-r1").doStream({
+      prompt: makePrompt("hi"),
+    })
+
+    const parts: LanguageModelV3StreamPart[] = []
+    const reader = stream.getReader()
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      parts.push(value)
+    }
+
+    const types = parts.map((p) => p.type)
+    expect(types).toContain("reasoning-start")
+    expect(types).toContain("reasoning-delta")
+    expect(types).toContain("reasoning-end")
+
+    // Reasoning is fully emitted and closed before any visible text.
+    expect(types.indexOf("reasoning-start")).toBeLessThan(types.indexOf("reasoning-delta"))
+    expect(types.indexOf("reasoning-end")).toBeLessThan(types.indexOf("text-start"))
+
+    const reasoning = parts
+      .filter(
+        (p): p is Extract<LanguageModelV3StreamPart, { type: "reasoning-delta" }> =>
+          p.type === "reasoning-delta",
+      )
+      .map((p) => p.delta)
+    expect(reasoning).toEqual(["Let me ", "think."])
   })
 })

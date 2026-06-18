@@ -167,6 +167,7 @@ type ToolCallAccumulator = Record<
 >
 interface StreamState {
   activeTextId: string | null
+  activeReasoningId: string | null
   metadataEmitted: boolean
 }
 type StreamController = TransformStreamDefaultController<LanguageModelV3StreamPart>
@@ -187,8 +188,31 @@ function emitResponseMetadata(
   })
 }
 
+/** Close an open reasoning block, if any. */
+function closeReasoning(state: StreamState, controller: StreamController): void {
+  if (state.activeReasoningId !== null) {
+    controller.enqueue({ type: "reasoning-end", id: state.activeReasoningId })
+    state.activeReasoningId = null
+  }
+}
+
+/** Emit a reasoning delta, opening a reasoning block on first content. */
+function emitReasoningDelta(
+  content: string,
+  state: StreamState,
+  controller: StreamController,
+): void {
+  if (state.activeReasoningId === null) {
+    state.activeReasoningId = generateId()
+    controller.enqueue({ type: "reasoning-start", id: state.activeReasoningId })
+  }
+  controller.enqueue({ type: "reasoning-delta", id: state.activeReasoningId, delta: content })
+}
+
 /** Emit a text delta, opening a text block on first content. */
 function emitTextDelta(content: string, state: StreamState, controller: StreamController): void {
+  // Reasoning precedes the answer; close it once visible text begins.
+  closeReasoning(state, controller)
   if (state.activeTextId === null) {
     state.activeTextId = generateId()
     controller.enqueue({ type: "text-start", id: state.activeTextId })
@@ -233,6 +257,7 @@ function emitFinish(
   acc: ToolCallAccumulator,
   controller: StreamController,
 ): void {
+  closeReasoning(state, controller)
   if (state.activeTextId !== null) {
     controller.enqueue({ type: "text-end", id: state.activeTextId })
     state.activeTextId = null
@@ -434,6 +459,10 @@ export class AnyRouterChatLanguageModel implements LanguageModelV3 {
 
     const content: LanguageModelV3GenerateResult["content"] = []
 
+    if (message?.reasoning_content) {
+      content.push({ type: "reasoning", text: message.reasoning_content })
+    }
+
     if (message?.content) {
       content.push({ type: "text", text: message.content })
     }
@@ -492,7 +521,11 @@ export class AnyRouterChatLanguageModel implements LanguageModelV3 {
     })
 
     const toolCallAccumulator: ToolCallAccumulator = {}
-    const state: StreamState = { activeTextId: null, metadataEmitted: false }
+    const state: StreamState = {
+      activeTextId: null,
+      activeReasoningId: null,
+      metadataEmitted: false,
+    }
     const selfModelId = this.modelId
 
     const transformStream = new TransformStream<
@@ -516,6 +549,9 @@ export class AnyRouterChatLanguageModel implements LanguageModelV3 {
 
         const delta = choice?.delta
         if (delta) {
+          if (typeof delta.reasoning_content === "string" && delta.reasoning_content.length > 0) {
+            emitReasoningDelta(delta.reasoning_content, state, controller)
+          }
           if (typeof delta.content === "string" && delta.content.length > 0) {
             emitTextDelta(delta.content, state, controller)
           }
@@ -530,6 +566,7 @@ export class AnyRouterChatLanguageModel implements LanguageModelV3 {
       },
 
       flush(controller) {
+        closeReasoning(state, controller)
         if (state.activeTextId !== null) {
           controller.enqueue({ type: "text-end", id: state.activeTextId })
         }
