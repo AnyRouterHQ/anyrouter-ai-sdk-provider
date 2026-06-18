@@ -1,6 +1,6 @@
 {
   "name": "@anyr/ai-sdk-provider",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "The AnyRouter provider for the Vercel AI SDK — call every AnyRouter model through `createAnyRouter`.",
   "type": "module",
   "main": "./dist/index.js",
@@ -61,15 +61,17 @@
     "access": "public"
   },
   "dependencies": {
-    "@anyr/sdk": "^0.1.1",
-    "@ai-sdk/provider": "^3.0.10",
-    "@ai-sdk/provider-utils": "^4.0.0"
+    "@anyr/sdk": "^0.1.1"
   },
   "peerDependencies": {
-    "ai": "^6.0.0",
+    "@ai-sdk/provider": "^3.0.10 || ^4.0.0-beta",
+    "@ai-sdk/provider-utils": "^4.0.0 || ^5.0.0-beta",
+    "ai": "^6.0.0 || ^7.0.0-beta",
     "zod": "^3.25.0 || ^4.0.0"
   },
   "devDependencies": {
+    "@ai-sdk/provider": "^3.0.10",
+    "@ai-sdk/provider-utils": "^4.0.0",
     "@types/node": "^24.0.0",
     "ai": "^6.0.159",
     "zod": "^4.4.3"
