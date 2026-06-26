@@ -7,6 +7,7 @@ import type {
   LanguageModelV4ToolResultPart,
 } from "@ai-sdk/provider"
 import { UnsupportedFunctionalityError } from "@ai-sdk/provider"
+import type { FileReferenceCache } from "./file-reference-cache"
 
 // ─── OpenAI-compatible message shapes ─────────────────────────────────────
 
@@ -39,9 +40,16 @@ export type AnyRouterChatMessage =
 
 /**
  * Convert a V4 prompt to an array of OpenAI-compatible chat messages.
+ *
+ * @param prompt - The V4 prompt to convert.
+ * @param fileCache - Optional file reference cache.  When provided, file parts
+ *   with `{ type: 'reference' }` are resolved via the cache instead of
+ *   throwing `UnsupportedFunctionalityError`.  Populate the cache by calling
+ *   `provider.files().uploadFile(...)` before the model call.
  */
 export function convertToAnyRouterChatMessages(
   prompt: LanguageModelV4Prompt,
+  fileCache?: FileReferenceCache,
 ): AnyRouterChatMessage[] {
   const messages: AnyRouterChatMessage[] = []
 
@@ -52,7 +60,7 @@ export function convertToAnyRouterChatMessages(
         break
 
       case "user":
-        messages.push(convertUserMessage(message))
+        messages.push(convertUserMessage(message, fileCache))
         break
 
       case "assistant":
@@ -80,6 +88,7 @@ export function convertToAnyRouterChatMessages(
 
 function convertUserMessage(
   message: Extract<LanguageModelV4Message, { role: "user" }>,
+  fileCache?: FileReferenceCache,
 ): AnyRouterChatMessage {
   // Single text part → collapse to string
   if (message.content.length === 1 && message.content[0].type === "text") {
@@ -94,7 +103,7 @@ function convertUserMessage(
     } else if (part.type === "file") {
       const filePart = part as LanguageModelV4FilePart
       const mediaType = filePart.mediaType
-      const url = fileDataToString(filePart, mediaType)
+      const url = fileDataToString(filePart, mediaType, fileCache)
 
       if (mediaType.startsWith("image/")) {
         parts.push({ type: "image_url", image_url: { url } })
@@ -208,10 +217,18 @@ function toolResultOutputToString(output: LanguageModelV4ToolResultOutput): stri
  *
  * - `type: 'data'`      → base64-encode bytes or pass through base64 string
  * - `type: 'url'`       → use URL directly
- * - `type: 'reference'` → unsupported (provider-specific reference)
+ * - `type: 'reference'` → look up in the file reference cache; throws if not found
  * - `type: 'text'`      → encode as plain-text data URL
+ *
+ * Provider references (`type: 'reference'`) are created by `provider.files()
+ * .uploadFile(...)`.  The cache is populated there and consulted here so the
+ * same binary content is never re-encoded across calls within a session.
  */
-function fileDataToString(filePart: LanguageModelV4FilePart, mediaType: string): string {
+function fileDataToString(
+  filePart: LanguageModelV4FilePart,
+  mediaType: string,
+  fileCache?: FileReferenceCache,
+): string {
   const d = filePart.data
   switch (d.type) {
     case "data": {
@@ -228,10 +245,15 @@ function fileDataToString(filePart: LanguageModelV4FilePart, mediaType: string):
     case "text":
       // Inline text content — encode as a data URL so downstream APIs receive it.
       return `data:${mediaType};base64,${btoa(d.text)}`
-    case "reference":
+    case "reference": {
+      // Look up the reference in the session cache populated by uploadFile().
+      const entry = fileCache?.lookup(d.reference)
+      if (entry) return entry.url
       throw new UnsupportedFunctionalityError({
-        functionality: "Provider file references (SharedV4FileDataReference) in chat messages",
+        functionality:
+          "Unresolved provider file reference — call provider.files().uploadFile() first to register the file in the session cache",
       })
+    }
   }
 }
 

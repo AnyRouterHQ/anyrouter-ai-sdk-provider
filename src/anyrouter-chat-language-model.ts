@@ -19,6 +19,7 @@ import {
 } from "@ai-sdk/provider-utils"
 import { z } from "zod"
 import { convertToAnyRouterChatMessages } from "./convert-to-anyrouter-chat-messages"
+import type { FileReferenceCache } from "./file-reference-cache"
 import type { AnyRouterProviderSettings } from "./types"
 
 // ─── Provider options (per-call) ───────────────────────────────────────────
@@ -380,8 +381,9 @@ function buildRequestBody(
   settings: AnyRouterProviderSettings,
   stream: boolean,
   perCallOptions: AnyRouterChatProviderOptions,
+  fileCache?: FileReferenceCache,
 ): Record<string, unknown> {
-  const messages = convertToAnyRouterChatMessages(options.prompt)
+  const messages = convertToAnyRouterChatMessages(options.prompt, fileCache)
   const responseFormat = buildResponseFormat(options.responseFormat)
   const tools = buildTools(options.tools)
   const toolChoice = mapToolChoice(options.toolChoice)
@@ -431,6 +433,12 @@ export interface AnyRouterChatConfig {
   headers: () => Record<string, string | undefined>
   fetch?: typeof globalThis.fetch
   settings: AnyRouterProviderSettings
+  /**
+   * Shared file reference cache for the provider instance.
+   * When present, `{ type: 'reference' }` file parts are resolved via the cache
+   * rather than throwing `UnsupportedFunctionalityError`.
+   */
+  fileCache?: FileReferenceCache
 }
 
 export class AnyRouterChatLanguageModel implements LanguageModelV4 {
@@ -463,6 +471,7 @@ export class AnyRouterChatLanguageModel implements LanguageModelV4 {
       this.config.settings,
       false,
       perCallOptions,
+      this.config.fileCache,
     )
 
     const { value: response, responseHeaders } = await postJsonToApi({
@@ -529,7 +538,14 @@ export class AnyRouterChatLanguageModel implements LanguageModelV4 {
         schema: anyRouterProviderOptionsSchema,
       })) ?? {}
 
-    const body = buildRequestBody(this.modelId, options, this.config.settings, true, perCallOptions)
+    const body = buildRequestBody(
+      this.modelId,
+      options,
+      this.config.settings,
+      true,
+      perCallOptions,
+      this.config.fileCache,
+    )
 
     const { value: stream, responseHeaders } = await postJsonToApi({
       url: `${this.config.baseURL}/chat/completions`,

@@ -1,10 +1,18 @@
-import type { EmbeddingModelV4, ImageModelV4, LanguageModelV4, ProviderV4 } from "@ai-sdk/provider"
+import type {
+  EmbeddingModelV4,
+  FilesV4,
+  ImageModelV4,
+  LanguageModelV4,
+  ProviderV4,
+} from "@ai-sdk/provider"
 import { NoSuchModelError } from "@ai-sdk/provider"
 import { combineHeaders, loadApiKey, withoutTrailingSlash } from "@ai-sdk/provider-utils"
 import { AnyRouter, DEFAULT_BASE_URL } from "@anyr/sdk"
 import { AnyRouterChatLanguageModel } from "./anyrouter-chat-language-model"
 import { AnyRouterEmbeddingModel } from "./anyrouter-embedding-model"
+import { AnyRouterFiles } from "./anyrouter-files"
 import { AnyRouterImageModel } from "./anyrouter-image-model"
+import { FileReferenceCache } from "./file-reference-cache"
 import type { AnyRouterProviderSettings } from "./types"
 
 const PROVIDER_ID = "anyrouter"
@@ -23,6 +31,24 @@ export interface AnyRouterProvider extends ProviderV4 {
    * Use this as an escape hatch when you need direct API access.
    */
   readonly client: AnyRouter
+
+  /**
+   * File management interface (AI SDK v4 `FilesV4`).
+   *
+   * Call `uploadFile()` to register a file in the session cache.  The returned
+   * `providerReference` can be used in subsequent model calls as a
+   * `{ type: 'file', data: { type: 'reference', reference } }` part — the
+   * provider resolves the reference from the cache without re-encoding the file.
+   *
+   * ```ts
+   * const ref = await anyrouter.files().uploadFile({
+   *   data: { type: 'data', data: pdfBytes },
+   *   mediaType: 'application/pdf',
+   * })
+   * // ref.providerReference === { anyrouter: '<sha256-hex>' }
+   * ```
+   */
+  files(): FilesV4
 }
 
 // ─── Factory ───────────────────────────────────────────────────────────────
@@ -48,6 +74,14 @@ export interface AnyRouterProvider extends ProviderV4 {
 export function createAnyRouter(options: AnyRouterProviderSettings = {}): AnyRouterProvider {
   const baseURL = withoutTrailingSlash(options.baseURL ?? DEFAULT_BASE_URL) ?? DEFAULT_BASE_URL
 
+  /**
+   * Shared file reference cache for this provider instance.
+   * All chat models and the FilesV4 interface share this cache so that a file
+   * uploaded via `provider.files().uploadFile()` can be referenced in any
+   * subsequent model call within the same session.
+   */
+  const sharedFileCache = new FileReferenceCache()
+
   /** Resolve the API key and build request headers lazily at request time. */
   function getHeaders(): Record<string, string | undefined> {
     const apiKey = loadApiKey({
@@ -65,6 +99,7 @@ export function createAnyRouter(options: AnyRouterProviderSettings = {}): AnyRou
       headers: getHeaders,
       fetch: options.fetch,
       settings: options,
+      fileCache: sharedFileCache,
     })
   }
 
@@ -109,6 +144,11 @@ export function createAnyRouter(options: AnyRouterProviderSettings = {}): AnyRou
     // AnyRouter convenience alias
     chat(modelId: string): LanguageModelV4 {
       return chatModel(modelId)
+    },
+
+    // ProviderV4 file-management interface
+    files(): FilesV4 {
+      return new AnyRouterFiles(PROVIDER_ID, sharedFileCache)
     },
 
     // Unsupported optional model types — throw NoSuchModelError per ProviderV4 contract
