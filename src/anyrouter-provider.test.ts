@@ -10,7 +10,7 @@ describe("createAnyRouter()", () => {
     const model = ar("openai/gpt-4o-mini")
     expect(model).toBeInstanceOf(AnyRouterChatLanguageModel)
     expect(model.modelId).toBe("openai/gpt-4o-mini")
-    expect(model.specificationVersion).toBe("v3")
+    expect(model.specificationVersion).toBe("v4")
     expect(model.provider).toBe("anyrouter")
   })
 
@@ -21,27 +21,18 @@ describe("createAnyRouter()", () => {
     expect(model.modelId).toBe("anthropic/claude-opus-4-5")
   })
 
-  it(".languageModel() produces a chat model (ProviderV3 interface)", () => {
+  it(".languageModel() produces a chat model (ProviderV4 interface)", () => {
     const ar = createAnyRouter({ apiKey: "test-test" })
     const model = ar.languageModel("openai/gpt-4o")
     expect(model).toBeInstanceOf(AnyRouterChatLanguageModel)
   })
 
-  it(".embeddingModel() produces an embedding model (ProviderV3)", () => {
+  it(".embeddingModel() produces an embedding model (ProviderV4)", () => {
     const ar = createAnyRouter({ apiKey: "test-test" })
     const model = ar.embeddingModel("openai/text-embedding-3-small")
     expect(model).toBeInstanceOf(AnyRouterEmbeddingModel)
     expect(model.modelId).toBe("openai/text-embedding-3-small")
-    expect(model.specificationVersion).toBe("v3")
-  })
-
-  it(".textEmbeddingModel() is a deprecated alias for embeddingModel", () => {
-    const ar = createAnyRouter({ apiKey: "test-test" })
-    // textEmbeddingModel is optional in ProviderV3 — use unknown cast to access it
-    const model = (
-      ar as unknown as { textEmbeddingModel(id: string): AnyRouterEmbeddingModel }
-    ).textEmbeddingModel("openai/text-embedding-3-large")
-    expect(model).toBeInstanceOf(AnyRouterEmbeddingModel)
+    expect(model.specificationVersion).toBe("v4")
   })
 
   it(".imageModel() produces an image model", () => {
@@ -49,12 +40,12 @@ describe("createAnyRouter()", () => {
     const model = ar.imageModel("openai/dall-e-3")
     expect(model).toBeInstanceOf(AnyRouterImageModel)
     expect(model.modelId).toBe("openai/dall-e-3")
-    expect(model.specificationVersion).toBe("v3")
+    expect(model.specificationVersion).toBe("v4")
   })
 
-  it("specificationVersion is v3 (ProviderV3)", () => {
+  it("specificationVersion is v4 (ProviderV4)", () => {
     const ar = createAnyRouter({ apiKey: "test-test" })
-    expect(ar.specificationVersion).toBe("v3")
+    expect(ar.specificationVersion).toBe("v4")
   })
 
   it("exposes .client getter returning AnyRouter instance", () => {

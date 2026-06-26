@@ -1,11 +1,11 @@
 import type {
-  LanguageModelV3,
-  LanguageModelV3CallOptions,
-  LanguageModelV3FinishReason,
-  LanguageModelV3GenerateResult,
-  LanguageModelV3StreamPart,
-  LanguageModelV3StreamResult,
-  LanguageModelV3Usage,
+  LanguageModelV4,
+  LanguageModelV4CallOptions,
+  LanguageModelV4FinishReason,
+  LanguageModelV4GenerateResult,
+  LanguageModelV4StreamPart,
+  LanguageModelV4StreamResult,
+  LanguageModelV4Usage,
 } from "@ai-sdk/provider"
 import type { ParseResult } from "@ai-sdk/provider-utils"
 import {
@@ -113,7 +113,7 @@ const streamChunkSchema = z.object({
 
 // ─── Finish reason mapping ─────────────────────────────────────────────────
 
-function mapFinishReason(raw: string | null | undefined): LanguageModelV3FinishReason {
+function mapFinishReason(raw: string | null | undefined): LanguageModelV4FinishReason {
   switch (raw) {
     case "stop":
       return { unified: "stop", raw: raw }
@@ -140,7 +140,7 @@ function buildUsage(
         total_tokens?: number | null
       }
     | undefined,
-): LanguageModelV3Usage {
+): LanguageModelV4Usage {
   return {
     inputTokens: {
       total: raw?.prompt_tokens ?? undefined,
@@ -154,6 +154,27 @@ function buildUsage(
       reasoning: undefined,
     },
   }
+}
+
+// ─── Reasoning parameter mapping ───────────────────────────────────────────
+
+/**
+ * Map the AI SDK 7 portable `reasoning` parameter to the AnyRouter gateway's
+ * `reasoning_effort` field.
+ *
+ * Gateway values: "none" | "minimal" | "low" | "medium" | "high"
+ * AI SDK values:  "provider-default" | "none" | "minimal" | "low" | "medium" | "high" | "xhigh"
+ *
+ * - "provider-default" → omit the field (let the gateway use its default)
+ * - "xhigh" → "high" (gateway maximum)
+ * - others → pass through verbatim
+ */
+function mapReasoningEffort(
+  reasoning: LanguageModelV4CallOptions["reasoning"],
+): string | undefined {
+  if (!reasoning || reasoning === "provider-default") return undefined
+  if (reasoning === "xhigh") return "high"
+  return reasoning
 }
 
 // ─── Stream transform helpers ──────────────────────────────────────────────
@@ -170,7 +191,7 @@ interface StreamState {
   activeReasoningId: string | null
   metadataEmitted: boolean
 }
-type StreamController = TransformStreamDefaultController<LanguageModelV3StreamPart>
+type StreamController = TransformStreamDefaultController<LanguageModelV4StreamPart>
 
 /** Emit `response-metadata` once, on the first chunk carrying an id or model. */
 function emitResponseMetadata(
@@ -289,7 +310,7 @@ type OpenAIToolChoice =
   | { type: "function"; function: { name: string } }
 
 function mapToolChoice(
-  toolChoice: LanguageModelV3CallOptions["toolChoice"],
+  toolChoice: LanguageModelV4CallOptions["toolChoice"],
 ): OpenAIToolChoice | undefined {
   if (!toolChoice) return undefined
   switch (toolChoice.type) {
@@ -312,7 +333,7 @@ type ResponseFormat =
   | { type: "json_schema"; json_schema: unknown }
 
 function buildResponseFormat(
-  responseFormat: LanguageModelV3CallOptions["responseFormat"],
+  responseFormat: LanguageModelV4CallOptions["responseFormat"],
 ): ResponseFormat | undefined {
   if (!responseFormat) return undefined
   if (responseFormat.type === "text") return { type: "text" }
@@ -334,7 +355,7 @@ function buildResponseFormat(
 }
 
 function buildTools(
-  tools: LanguageModelV3CallOptions["tools"],
+  tools: LanguageModelV4CallOptions["tools"],
 ): Array<{ type: "function"; function: unknown }> | undefined {
   if (!tools || tools.length === 0) return undefined
   const fns = tools
@@ -355,7 +376,7 @@ function buildTools(
 
 function buildRequestBody(
   modelId: string,
-  options: LanguageModelV3CallOptions,
+  options: LanguageModelV4CallOptions,
   settings: AnyRouterProviderSettings,
   stream: boolean,
   perCallOptions: AnyRouterChatProviderOptions,
@@ -369,6 +390,9 @@ function buildRequestBody(
   const provider = perCallOptions.provider ?? settings.provider
   const sessionId = perCallOptions.sessionId ?? settings.sessionId
   const extraBody = { ...settings.extraBody, ...perCallOptions.extraBody }
+
+  // Map the portable AI SDK 7 reasoning parameter to the gateway's reasoning_effort.
+  const reasoningEffort = mapReasoningEffort(options.reasoning)
 
   const body: Record<string, unknown> = {
     model: modelId,
@@ -387,6 +411,7 @@ function buildRequestBody(
     tool_choice: toolChoice,
     provider: provider ?? undefined,
     session_id: sessionId ?? undefined,
+    reasoning_effort: reasoningEffort,
     ...extraBody,
   }
 
@@ -408,8 +433,8 @@ export interface AnyRouterChatConfig {
   settings: AnyRouterProviderSettings
 }
 
-export class AnyRouterChatLanguageModel implements LanguageModelV3 {
-  readonly specificationVersion = "v3" as const
+export class AnyRouterChatLanguageModel implements LanguageModelV4 {
+  readonly specificationVersion = "v4" as const
   readonly provider: string
   readonly modelId: string
   readonly supportedUrls: Record<string, RegExp[]> = {}
@@ -424,7 +449,7 @@ export class AnyRouterChatLanguageModel implements LanguageModelV3 {
 
   // ─── doGenerate ─────────────────────────────────────────────────────────
 
-  async doGenerate(options: LanguageModelV3CallOptions): Promise<LanguageModelV3GenerateResult> {
+  async doGenerate(options: LanguageModelV4CallOptions): Promise<LanguageModelV4GenerateResult> {
     const perCallOptions: AnyRouterChatProviderOptions =
       (await parseProviderOptions({
         provider: "anyrouter",
@@ -457,7 +482,7 @@ export class AnyRouterChatLanguageModel implements LanguageModelV3 {
     const choice = response.choices?.[0]
     const message = choice?.message
 
-    const content: LanguageModelV3GenerateResult["content"] = []
+    const content: LanguageModelV4GenerateResult["content"] = []
 
     if (message?.reasoning_content) {
       content.push({ type: "reasoning", text: message.reasoning_content })
@@ -496,7 +521,7 @@ export class AnyRouterChatLanguageModel implements LanguageModelV3 {
 
   // ─── doStream ───────────────────────────────────────────────────────────
 
-  async doStream(options: LanguageModelV3CallOptions): Promise<LanguageModelV3StreamResult> {
+  async doStream(options: LanguageModelV4CallOptions): Promise<LanguageModelV4StreamResult> {
     const perCallOptions: AnyRouterChatProviderOptions =
       (await parseProviderOptions({
         provider: "anyrouter",
@@ -530,7 +555,7 @@ export class AnyRouterChatLanguageModel implements LanguageModelV3 {
 
     const transformStream = new TransformStream<
       ParseResult<z.infer<typeof streamChunkSchema>>,
-      LanguageModelV3StreamPart
+      LanguageModelV4StreamPart
     >({
       start(controller) {
         controller.enqueue({ type: "stream-start", warnings: [] })

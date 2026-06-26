@@ -1,10 +1,10 @@
 import type {
-  LanguageModelV3FilePart,
-  LanguageModelV3Message,
-  LanguageModelV3Prompt,
-  LanguageModelV3ToolCallPart,
-  LanguageModelV3ToolResultOutput,
-  LanguageModelV3ToolResultPart,
+  LanguageModelV4FilePart,
+  LanguageModelV4Message,
+  LanguageModelV4Prompt,
+  LanguageModelV4ToolCallPart,
+  LanguageModelV4ToolResultOutput,
+  LanguageModelV4ToolResultPart,
 } from "@ai-sdk/provider"
 import { UnsupportedFunctionalityError } from "@ai-sdk/provider"
 
@@ -38,10 +38,10 @@ export type AnyRouterChatMessage =
   | { role: "tool"; tool_call_id: string; content: string }
 
 /**
- * Convert a V3 prompt to an array of OpenAI-compatible chat messages.
+ * Convert a V4 prompt to an array of OpenAI-compatible chat messages.
  */
 export function convertToAnyRouterChatMessages(
-  prompt: LanguageModelV3Prompt,
+  prompt: LanguageModelV4Prompt,
 ): AnyRouterChatMessage[] {
   const messages: AnyRouterChatMessage[] = []
 
@@ -70,7 +70,7 @@ export function convertToAnyRouterChatMessages(
 
       default: {
         const _exhaustive: never = message
-        throw new Error(`Unsupported message role: ${(_exhaustive as LanguageModelV3Message).role}`)
+        throw new Error(`Unsupported message role: ${(_exhaustive as LanguageModelV4Message).role}`)
       }
     }
   }
@@ -79,7 +79,7 @@ export function convertToAnyRouterChatMessages(
 }
 
 function convertUserMessage(
-  message: Extract<LanguageModelV3Message, { role: "user" }>,
+  message: Extract<LanguageModelV4Message, { role: "user" }>,
 ): AnyRouterChatMessage {
   // Single text part → collapse to string
   if (message.content.length === 1 && message.content[0].type === "text") {
@@ -92,9 +92,9 @@ function convertUserMessage(
     if (part.type === "text") {
       parts.push({ type: "text", text: part.text })
     } else if (part.type === "file") {
-      const filePart = part as LanguageModelV3FilePart
+      const filePart = part as LanguageModelV4FilePart
       const mediaType = filePart.mediaType
-      const url = toDataUrlOrString(filePart.data, mediaType)
+      const url = fileDataToString(filePart, mediaType)
 
       if (mediaType.startsWith("image/")) {
         parts.push({ type: "image_url", image_url: { url } })
@@ -102,7 +102,7 @@ function convertUserMessage(
         parts.push({ type: "file", file: { url, media_type: mediaType } })
       }
     } else {
-      // Exhaustive: LanguageModelV3Message user content is only text | file.
+      // Exhaustive: LanguageModelV4 user content is text | file | (ignored custom).
       // Cast to access type for the error message.
       const unknown = part as { type?: string }
       throw new UnsupportedFunctionalityError({
@@ -115,7 +115,7 @@ function convertUserMessage(
 }
 
 function convertAssistantMessage(
-  message: Extract<LanguageModelV3Message, { role: "assistant" }>,
+  message: Extract<LanguageModelV4Message, { role: "assistant" }>,
 ): AnyRouterChatMessage {
   let text = ""
   const toolCalls: AssistantToolCall[] = []
@@ -127,7 +127,7 @@ function convertAssistantMessage(
         break
 
       case "tool-call": {
-        const tc = part as LanguageModelV3ToolCallPart
+        const tc = part as LanguageModelV4ToolCallPart
         toolCalls.push({
           id: tc.toolCallId,
           type: "function",
@@ -139,7 +139,7 @@ function convertAssistantMessage(
         break
       }
 
-      // reasoning, file, tool-result inside assistant turn — skip
+      // reasoning, file, reasoning-file, custom, tool-result inside assistant turn — skip
       default:
         break
     }
@@ -157,7 +157,7 @@ function convertAssistantMessage(
   return result
 }
 
-function convertToolResultMessage(part: LanguageModelV3ToolResultPart): AnyRouterChatMessage {
+function convertToolResultMessage(part: LanguageModelV4ToolResultPart): AnyRouterChatMessage {
   return {
     role: "tool",
     tool_call_id: part.toolCallId,
@@ -165,7 +165,7 @@ function convertToolResultMessage(part: LanguageModelV3ToolResultPart): AnyRoute
   }
 }
 
-function toolResultOutputToString(output: LanguageModelV3ToolResultOutput): string {
+function toolResultOutputToString(output: LanguageModelV4ToolResultOutput): string {
   switch (output.type) {
     case "text":
       return output.value
@@ -199,13 +199,40 @@ function toolResultOutputToString(output: LanguageModelV3ToolResultOutput): stri
   }
 }
 
-function toDataUrlOrString(data: string | Uint8Array | URL, mediaType: string): string {
-  if (data instanceof URL) return data.toString()
-  if (typeof data === "string") {
-    if (data.startsWith("http") || data.startsWith("data:")) return data
-    return `data:${mediaType};base64,${data}`
+/**
+ * Convert a V4 `SharedV4FileData` discriminated union to a URL or data-URL
+ * string suitable for use in an OpenAI-compatible message.
+ *
+ * V4 change from V3: `filePart.data` is now a tagged discriminated union
+ * (`SharedV4FileData`) rather than a raw `string | Uint8Array | URL`.
+ *
+ * - `type: 'data'`      → base64-encode bytes or pass through base64 string
+ * - `type: 'url'`       → use URL directly
+ * - `type: 'reference'` → unsupported (provider-specific reference)
+ * - `type: 'text'`      → encode as plain-text data URL
+ */
+function fileDataToString(filePart: LanguageModelV4FilePart, mediaType: string): string {
+  const d = filePart.data
+  switch (d.type) {
+    case "data": {
+      if (typeof d.data === "string") {
+        // Already base64 — pass through or wrap in data URL.
+        if (d.data.startsWith("data:")) return d.data
+        return `data:${mediaType};base64,${d.data}`
+      }
+      // Uint8Array → base64 data URL
+      return `data:${mediaType};base64,${uint8ArrayToBase64(d.data)}`
+    }
+    case "url":
+      return d.url.toString()
+    case "text":
+      // Inline text content — encode as a data URL so downstream APIs receive it.
+      return `data:${mediaType};base64,${btoa(d.text)}`
+    case "reference":
+      throw new UnsupportedFunctionalityError({
+        functionality: "Provider file references (SharedV4FileDataReference) in chat messages",
+      })
   }
-  return `data:${mediaType};base64,${uint8ArrayToBase64(data)}`
 }
 
 function uint8ArrayToBase64(bytes: Uint8Array): string {

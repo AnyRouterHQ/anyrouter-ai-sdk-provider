@@ -1,4 +1,4 @@
-import type { EmbeddingModelV3, ImageModelV3, LanguageModelV3, ProviderV3 } from "@ai-sdk/provider"
+import type { EmbeddingModelV4, ImageModelV4, LanguageModelV4, ProviderV4 } from "@ai-sdk/provider"
 import { NoSuchModelError } from "@ai-sdk/provider"
 import { combineHeaders, loadApiKey, withoutTrailingSlash } from "@ai-sdk/provider-utils"
 import { AnyRouter, DEFAULT_BASE_URL } from "@anyr/sdk"
@@ -11,12 +11,12 @@ const PROVIDER_ID = "anyrouter"
 
 // ─── Provider interface ────────────────────────────────────────────────────
 
-export interface AnyRouterProvider extends ProviderV3 {
+export interface AnyRouterProvider extends ProviderV4 {
   /** Create a chat language model by calling the provider directly. */
-  (modelId: string): LanguageModelV3
+  (modelId: string): LanguageModelV4
 
   /** Create a chat language model (explicit method). */
-  chat(modelId: string): LanguageModelV3
+  chat(modelId: string): LanguageModelV4
 
   /**
    * Low-level `@anyr/sdk` client instance.
@@ -89,34 +89,29 @@ export function createAnyRouter(options: AnyRouterProviderSettings = {}): AnyRou
   /**
    * The callable provider — calling it directly returns a chat model.
    */
-  const provider = (modelId: string): LanguageModelV3 => chatModel(modelId)
+  const provider = (modelId: string): LanguageModelV4 => chatModel(modelId)
 
   const providerObj = Object.assign(provider, {
-    // ProviderV3 required fields
-    specificationVersion: "v3" as const,
+    // ProviderV4 required fields
+    specificationVersion: "v4" as const,
 
-    // ProviderV3 required methods
-    languageModel(modelId: string): LanguageModelV3 {
+    // ProviderV4 required methods
+    languageModel(modelId: string): LanguageModelV4 {
       return chatModel(modelId)
     },
-    embeddingModel(modelId: string): EmbeddingModelV3 {
+    embeddingModel(modelId: string): EmbeddingModelV4 {
       return embeddingModel(modelId)
     },
-    imageModel(modelId: string): ImageModelV3 {
+    imageModel(modelId: string): ImageModelV4 {
       return imageModel(modelId)
     },
 
-    // ProviderV3 optional methods (deprecated textEmbeddingModel alias)
-    textEmbeddingModel(modelId: string): EmbeddingModelV3 {
-      return embeddingModel(modelId)
-    },
-
     // AnyRouter convenience alias
-    chat(modelId: string): LanguageModelV3 {
+    chat(modelId: string): LanguageModelV4 {
       return chatModel(modelId)
     },
 
-    // Unsupported model types — throw NoSuchModelError per ProviderV3 contract
+    // Unsupported optional model types — throw NoSuchModelError per ProviderV4 contract
     transcriptionModel(modelId: string): never {
       throw new NoSuchModelError({ modelId, modelType: "transcriptionModel" })
     },

@@ -1,7 +1,7 @@
 import type {
-  EmbeddingModelV3,
-  EmbeddingModelV3CallOptions,
-  EmbeddingModelV3Result,
+  EmbeddingModelV4,
+  EmbeddingModelV4CallOptions,
+  EmbeddingModelV4Result,
 } from "@ai-sdk/provider"
 import {
   combineHeaders,
@@ -41,8 +41,8 @@ export interface AnyRouterEmbeddingConfig {
   fetch?: typeof globalThis.fetch
 }
 
-export class AnyRouterEmbeddingModel implements EmbeddingModelV3 {
-  readonly specificationVersion = "v3" as const
+export class AnyRouterEmbeddingModel implements EmbeddingModelV4 {
+  readonly specificationVersion = "v4" as const
   readonly provider: string
   readonly modelId: string
 
@@ -58,7 +58,7 @@ export class AnyRouterEmbeddingModel implements EmbeddingModelV3 {
     this.config = config
   }
 
-  async doEmbed(options: EmbeddingModelV3CallOptions): Promise<EmbeddingModelV3Result> {
+  async doEmbed(options: EmbeddingModelV4CallOptions): Promise<EmbeddingModelV4Result> {
     const { value: response } = await postJsonToApi({
       url: `${this.config.baseURL}/embeddings`,
       headers: combineHeaders(this.config.headers(), options.headers),

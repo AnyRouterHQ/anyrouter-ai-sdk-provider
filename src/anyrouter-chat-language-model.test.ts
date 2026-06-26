@@ -1,10 +1,10 @@
-import type { LanguageModelV3CallOptions, LanguageModelV3StreamPart } from "@ai-sdk/provider"
+import type { LanguageModelV4CallOptions, LanguageModelV4StreamPart } from "@ai-sdk/provider"
 import { describe, expect, it } from "vitest"
 import { createAnyRouter } from "./anyrouter-provider"
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
-function makePrompt(text: string): LanguageModelV3CallOptions["prompt"] {
+function makePrompt(text: string): LanguageModelV4CallOptions["prompt"] {
   return [{ role: "user", content: [{ type: "text", text }] }]
 }
 
@@ -268,6 +268,83 @@ describe("AnyRouterChatLanguageModel.doGenerate()", () => {
 
     expect((capturedBody as Record<string, unknown>).stream).toBe(true)
   })
+
+  it("maps reasoning parameter to reasoning_effort in request body", async () => {
+    let capturedBody: unknown
+
+    const ar = createAnyRouter({
+      apiKey: "test-test",
+      fetch: async (_url, init) => {
+        capturedBody = JSON.parse(init?.body as string)
+        return new Response(
+          JSON.stringify({
+            choices: [{ message: { content: "ok" }, finish_reason: "stop" }],
+            usage: { prompt_tokens: 5, completion_tokens: 2 },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        )
+      },
+    })
+
+    await ar("deepseek/deepseek-r1").doGenerate({
+      prompt: makePrompt("hi"),
+      reasoning: "medium",
+    })
+
+    expect((capturedBody as Record<string, unknown>).reasoning_effort).toBe("medium")
+  })
+
+  it("maps reasoning=xhigh to reasoning_effort=high (gateway max)", async () => {
+    let capturedBody: unknown
+
+    const ar = createAnyRouter({
+      apiKey: "test-test",
+      fetch: async (_url, init) => {
+        capturedBody = JSON.parse(init?.body as string)
+        return new Response(
+          JSON.stringify({
+            choices: [{ message: { content: "ok" }, finish_reason: "stop" }],
+            usage: { prompt_tokens: 5, completion_tokens: 2 },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        )
+      },
+    })
+
+    await ar("deepseek/deepseek-r1").doGenerate({
+      prompt: makePrompt("hi"),
+      reasoning: "xhigh",
+    })
+
+    // "xhigh" exceeds gateway max — clamp to "high"
+    expect((capturedBody as Record<string, unknown>).reasoning_effort).toBe("high")
+  })
+
+  it("omits reasoning_effort when reasoning=provider-default", async () => {
+    let capturedBody: unknown
+
+    const ar = createAnyRouter({
+      apiKey: "test-test",
+      fetch: async (_url, init) => {
+        capturedBody = JSON.parse(init?.body as string)
+        return new Response(
+          JSON.stringify({
+            choices: [{ message: { content: "ok" }, finish_reason: "stop" }],
+            usage: { prompt_tokens: 5, completion_tokens: 2 },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        )
+      },
+    })
+
+    await ar("deepseek/deepseek-r1").doGenerate({
+      prompt: makePrompt("hi"),
+      reasoning: "provider-default",
+    })
+
+    // provider-default → let gateway decide; do not send the field
+    expect((capturedBody as Record<string, unknown>).reasoning_effort).toBeUndefined()
+  })
 })
 
 // ─── doStream ─────────────────────────────────────────────────────────────
@@ -296,7 +373,7 @@ describe("AnyRouterChatLanguageModel.doStream()", () => {
       prompt: makePrompt("hi"),
     })
 
-    const parts: LanguageModelV3StreamPart[] = []
+    const parts: LanguageModelV4StreamPart[] = []
     const reader = stream.getReader()
     while (true) {
       const { done, value } = await reader.read()
@@ -318,7 +395,7 @@ describe("AnyRouterChatLanguageModel.doStream()", () => {
     // Deltas contain the expected text
     const deltas = parts
       .filter(
-        (p): p is Extract<LanguageModelV3StreamPart, { type: "text-delta" }> =>
+        (p): p is Extract<LanguageModelV4StreamPart, { type: "text-delta" }> =>
           p.type === "text-delta",
       )
       .map((p) => p.delta)
@@ -326,7 +403,7 @@ describe("AnyRouterChatLanguageModel.doStream()", () => {
 
     // Finish carries usage
     const finish = parts.find(
-      (p): p is Extract<LanguageModelV3StreamPart, { type: "finish" }> => p.type === "finish",
+      (p): p is Extract<LanguageModelV4StreamPart, { type: "finish" }> => p.type === "finish",
     )
     expect(finish?.usage.inputTokens.total).toBe(5)
     expect(finish?.usage.outputTokens.total).toBe(3)
@@ -375,7 +452,7 @@ describe("AnyRouterChatLanguageModel.doStream()", () => {
       prompt: makePrompt("search for ai"),
     })
 
-    const parts: LanguageModelV3StreamPart[] = []
+    const parts: LanguageModelV4StreamPart[] = []
     const reader = stream.getReader()
     while (true) {
       const { done, value } = await reader.read()
@@ -390,14 +467,14 @@ describe("AnyRouterChatLanguageModel.doStream()", () => {
     expect(types).toContain("tool-call")
 
     const toolCall = parts.find(
-      (p): p is Extract<LanguageModelV3StreamPart, { type: "tool-call" }> => p.type === "tool-call",
+      (p): p is Extract<LanguageModelV4StreamPart, { type: "tool-call" }> => p.type === "tool-call",
     )
     expect(toolCall?.toolName).toBe("search")
     expect(toolCall?.toolCallId).toBe("call_abc")
     expect(toolCall?.input).toBe('{"q":"ai"}')
 
     const finish = parts.find(
-      (p): p is Extract<LanguageModelV3StreamPart, { type: "finish" }> => p.type === "finish",
+      (p): p is Extract<LanguageModelV4StreamPart, { type: "finish" }> => p.type === "finish",
     )
     expect(finish?.finishReason.unified).toBe("tool-calls")
   })
@@ -420,7 +497,7 @@ describe("AnyRouterChatLanguageModel.doStream()", () => {
       prompt: makePrompt("hi"),
     })
 
-    const parts: LanguageModelV3StreamPart[] = []
+    const parts: LanguageModelV4StreamPart[] = []
     const reader = stream.getReader()
     while (true) {
       const { done, value } = await reader.read()
@@ -439,7 +516,7 @@ describe("AnyRouterChatLanguageModel.doStream()", () => {
 
     const reasoning = parts
       .filter(
-        (p): p is Extract<LanguageModelV3StreamPart, { type: "reasoning-delta" }> =>
+        (p): p is Extract<LanguageModelV4StreamPart, { type: "reasoning-delta" }> =>
           p.type === "reasoning-delta",
       )
       .map((p) => p.delta)

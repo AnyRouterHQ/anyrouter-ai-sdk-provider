@@ -1,4 +1,9 @@
-import type { ImageModelV3, ImageModelV3CallOptions, SharedV3Warning } from "@ai-sdk/provider"
+import type {
+  ImageModelV4,
+  ImageModelV4CallOptions,
+  ImageModelV4Result,
+  SharedV4Warning,
+} from "@ai-sdk/provider"
 import { UnsupportedFunctionalityError } from "@ai-sdk/provider"
 import {
   combineHeaders,
@@ -35,8 +40,8 @@ export interface AnyRouterImageConfig {
   fetch?: typeof globalThis.fetch
 }
 
-export class AnyRouterImageModel implements ImageModelV3 {
-  readonly specificationVersion = "v3" as const
+export class AnyRouterImageModel implements ImageModelV4 {
+  readonly specificationVersion = "v4" as const
   readonly provider: string
   readonly modelId: string
 
@@ -54,16 +59,20 @@ export class AnyRouterImageModel implements ImageModelV3 {
     this.config = config
   }
 
-  async doGenerate(
-    options: ImageModelV3CallOptions,
-  ): Promise<Awaited<ReturnType<ImageModelV3["doGenerate"]>>> {
+  async doGenerate(options: ImageModelV4CallOptions): Promise<ImageModelV4Result> {
+    // V4 image editing: throw on mask (inpainting) or files (editing/variation).
     if (options.mask) {
       throw new UnsupportedFunctionalityError({
         functionality: "mask (inpainting) for AnyRouter image generation",
       })
     }
+    if (options.files && options.files.length > 0) {
+      throw new UnsupportedFunctionalityError({
+        functionality: "image editing (files) for AnyRouter image generation",
+      })
+    }
 
-    const warnings: SharedV3Warning[] = []
+    const warnings: SharedV4Warning[] = []
 
     if (options.n > 1) {
       warnings.push({
