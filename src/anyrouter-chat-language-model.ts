@@ -272,8 +272,8 @@ function emitToolCallDeltas(
 
 /** Close any open text + tool blocks and emit the final `finish` part. */
 function emitFinish(
-  choice: StreamChoice,
-  chunk: StreamChunk,
+  choice: StreamChoice | undefined,
+  usage: StreamChunk["usage"],
   state: StreamState,
   acc: ToolCallAccumulator,
   controller: StreamController,
@@ -296,8 +296,8 @@ function emitFinish(
   }
   controller.enqueue({
     type: "finish",
-    usage: buildUsage(chunk.usage),
-    finishReason: mapFinishReason(choice.finish_reason),
+    usage: buildUsage(usage),
+    finishReason: mapFinishReason(choice?.finish_reason),
   })
 }
 
@@ -553,6 +553,13 @@ export class AnyRouterChatLanguageModel implements LanguageModelV4 {
     }
     const selfModelId = this.modelId
 
+    // OpenAI-compatible backends with `stream_options.include_usage` send token
+    // usage in a trailing chunk (`choices: []`) AFTER the finish_reason chunk.
+    // Accumulate usage across all chunks and emit the `finish` part at flush —
+    // emitting it on the finish_reason chunk loses the usage (it isn't there yet).
+    let streamUsage: StreamChunk["usage"]
+    let finishChoice: StreamChoice | undefined
+
     const transformStream = new TransformStream<
       ParseResult<z.infer<typeof streamChunkSchema>>,
       LanguageModelV4StreamPart
@@ -570,6 +577,10 @@ export class AnyRouterChatLanguageModel implements LanguageModelV4 {
         const chunk = chunkResult.value
         const choice = chunk.choices?.[0]
 
+        // Capture usage from whichever chunk carries it (often a trailing
+        // choices:[] chunk); the finish part is emitted with it at flush.
+        if (chunk.usage) streamUsage = chunk.usage
+
         emitResponseMetadata(chunk, state, selfModelId, controller)
 
         const delta = choice?.delta
@@ -586,15 +597,14 @@ export class AnyRouterChatLanguageModel implements LanguageModelV4 {
         }
 
         if (choice?.finish_reason) {
-          emitFinish(choice, chunk, state, toolCallAccumulator, controller)
+          finishChoice = choice
         }
       },
 
       flush(controller) {
-        closeReasoning(state, controller)
-        if (state.activeTextId !== null) {
-          controller.enqueue({ type: "text-end", id: state.activeTextId })
-        }
+        // Emit the single terminal finish part with the accumulated usage. This
+        // also closes any open reasoning/text and flushes tool-calls.
+        emitFinish(finishChoice, streamUsage, state, toolCallAccumulator, controller)
       },
     })
 
