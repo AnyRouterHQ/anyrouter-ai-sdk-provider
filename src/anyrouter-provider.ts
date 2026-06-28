@@ -84,6 +84,12 @@ export function createAnyRouter(options: AnyRouterProviderSettings = {}): AnyRou
 
   /** Resolve the API key and build request headers lazily at request time. */
   function getHeaders(): Record<string, string | undefined> {
+    // Keyless mode: no key resolution. Auth comes from ambient sources (same-origin
+    // session cookies, or an Authorization passed via `headers`). Avoids the
+    // `loadApiKey` throw on the Playground's keyless default flow (#852).
+    if (options.keyless) {
+      return combineHeaders({}, options.headers)
+    }
     const apiKey = loadApiKey({
       apiKey: options.apiKey,
       environmentVariableName: "ANYROUTER_API_KEY",

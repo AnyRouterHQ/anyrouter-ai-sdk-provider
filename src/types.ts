@@ -10,6 +10,17 @@ export interface AnyRouterProviderSettings {
   apiKey?: string
 
   /**
+   * Skip API-key resolution entirely. When `true`, no `Authorization` header is
+   * derived from `apiKey`/`ANYROUTER_API_KEY` — requests rely on ambient auth
+   * such as same-origin session cookies (the AnyRouter Playground) or an
+   * `Authorization` header supplied via {@link headers}.
+   *
+   * Without this, `createAnyRouter()` throws at request time when no key is
+   * present. Defaults to `false`.
+   */
+  keyless?: boolean
+
+  /**
    * API base URL.
    * Defaults to `https://anyrouter.dev/api/v1`.
    */

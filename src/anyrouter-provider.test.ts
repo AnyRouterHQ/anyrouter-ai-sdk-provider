@@ -92,4 +92,54 @@ describe("createAnyRouter()", () => {
       delete process.env.ANYROUTER_API_KEY
     }
   })
+
+  // ─── keyless mode (#852) ───────────────────────────────────────────────────
+
+  it("keyless: omits the Authorization header instead of throwing on missing key", async () => {
+    let capturedAuth: string | null = "unset"
+    const fetchMock: typeof globalThis.fetch = async (_url, init) => {
+      capturedAuth = new Headers(init?.headers).get("authorization")
+      return new Response(
+        JSON.stringify({
+          id: "g1",
+          model: "openai/gpt-4o-mini",
+          choices: [{ message: { content: "ok" }, finish_reason: "stop" }],
+          usage: { prompt_tokens: 1, completion_tokens: 1 },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      )
+    }
+    // No apiKey, no ANYROUTER_API_KEY — non-keyless would throw inside loadApiKey.
+    delete process.env.ANYROUTER_API_KEY
+    const ar = createAnyRouter({ keyless: true, fetch: fetchMock })
+    await ar("openai/gpt-4o-mini").doGenerate({
+      prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+    })
+    expect(capturedAuth).toBeNull()
+  })
+
+  it("keyless: still forwards an Authorization supplied via headers (session token)", async () => {
+    let capturedAuth: string | null = null
+    const fetchMock: typeof globalThis.fetch = async (_url, init) => {
+      capturedAuth = new Headers(init?.headers).get("authorization")
+      return new Response(
+        JSON.stringify({
+          id: "g2",
+          model: "openai/gpt-4o-mini",
+          choices: [{ message: { content: "ok" }, finish_reason: "stop" }],
+          usage: { prompt_tokens: 1, completion_tokens: 1 },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      )
+    }
+    const ar = createAnyRouter({
+      keyless: true,
+      headers: { Authorization: "Bearer session-xyz" },
+      fetch: fetchMock,
+    })
+    await ar("openai/gpt-4o-mini").doGenerate({
+      prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+    })
+    expect(capturedAuth).toBe("Bearer session-xyz")
+  })
 })
