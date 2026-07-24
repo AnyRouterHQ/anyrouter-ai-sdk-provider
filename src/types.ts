@@ -55,4 +55,27 @@ export interface AnyRouterProviderSettings {
    * Per-call `providerOptions.anyrouter.extraBody` takes precedence.
    */
   extraBody?: Record<string, unknown>
+
+  /**
+   * Cache every response for N seconds via Cloudflare AI Gateway.
+   * Sent as the `cf-aig-cache-ttl` header. Min 60, max ~1 month (2,678,400s).
+   * Per-call `providerOptions.anyrouter.cacheTtl` takes precedence.
+   */
+  cacheTtl?: number
+
+  /**
+   * Custom cache key for Cloudflare AI Gateway response caching, so requests
+   * with different content can share a cached response. Sent as
+   * `cf-aig-cache-key`. Per-call `providerOptions.anyrouter.cacheKey` takes
+   * precedence.
+   */
+  cacheKey?: string
+
+  /**
+   * Skip Cloudflare AI Gateway response caching for every request, even if a
+   * default cache policy would otherwise apply. Sent as
+   * `cf-aig-skip-cache: true`. Per-call `providerOptions.anyrouter.skipCache`
+   * takes precedence.
+   */
+  skipCache?: boolean
 }

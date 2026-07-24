@@ -31,6 +31,12 @@ const anyRouterProviderOptionsSchema = z.object({
   sessionId: z.string().optional(),
   /** Extra body fields merged in last (highest precedence). */
   extraBody: z.record(z.string(), z.unknown()).optional(),
+  /** Cache this response for N seconds, forwarded as the `cf-aig-cache-ttl` header. */
+  cacheTtl: z.number().optional(),
+  /** Custom cache key, forwarded as the `cf-aig-cache-key` header. */
+  cacheKey: z.string().optional(),
+  /** Skip response caching for this call, forwarded as `cf-aig-skip-cache: true`. */
+  skipCache: z.boolean().optional(),
 })
 
 type AnyRouterChatProviderOptions = z.infer<typeof anyRouterProviderOptionsSchema>
@@ -425,6 +431,29 @@ function buildRequestBody(
   return body
 }
 
+// ─── Cache header builder ──────────────────────────────────────────────────
+
+/**
+ * Translate the `cacheTtl` / `cacheKey` / `skipCache` settings + per-call
+ * provider options into their Cloudflare AI Gateway header equivalents.
+ * Per-call options take precedence over provider-level settings; each header
+ * is omitted when its value is undefined (or `false` for `skipCache`).
+ */
+function buildCacheHeaders(
+  settings: AnyRouterProviderSettings,
+  perCallOptions: AnyRouterChatProviderOptions,
+): Record<string, string> {
+  const cacheTtl = perCallOptions.cacheTtl ?? settings.cacheTtl
+  const cacheKey = perCallOptions.cacheKey ?? settings.cacheKey
+  const skipCache = perCallOptions.skipCache ?? settings.skipCache
+
+  const headers: Record<string, string> = {}
+  if (cacheTtl !== undefined) headers["cf-aig-cache-ttl"] = String(cacheTtl)
+  if (cacheKey !== undefined) headers["cf-aig-cache-key"] = cacheKey
+  if (skipCache === true) headers["cf-aig-skip-cache"] = "true"
+  return headers
+}
+
 // ─── AnyRouterChatLanguageModel ────────────────────────────────────────────
 
 export interface AnyRouterChatConfig {
@@ -476,7 +505,11 @@ export class AnyRouterChatLanguageModel implements LanguageModelV4 {
 
     const { value: response, responseHeaders } = await postJsonToApi({
       url: `${this.config.baseURL}/chat/completions`,
-      headers: combineHeaders(this.config.headers(), options.headers),
+      headers: combineHeaders(
+        this.config.headers(),
+        buildCacheHeaders(this.config.settings, perCallOptions),
+        options.headers,
+      ),
       body,
       failedResponseHandler: createJsonErrorResponseHandler({
         errorSchema: anyRouterErrorSchema,
@@ -549,7 +582,11 @@ export class AnyRouterChatLanguageModel implements LanguageModelV4 {
 
     const { value: stream, responseHeaders } = await postJsonToApi({
       url: `${this.config.baseURL}/chat/completions`,
-      headers: combineHeaders(this.config.headers(), options.headers),
+      headers: combineHeaders(
+        this.config.headers(),
+        buildCacheHeaders(this.config.settings, perCallOptions),
+        options.headers,
+      ),
       body,
       failedResponseHandler: createJsonErrorResponseHandler({
         errorSchema: anyRouterErrorSchema,
