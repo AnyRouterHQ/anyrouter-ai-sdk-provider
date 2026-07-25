@@ -1,3 +1,5 @@
+import type { AppAttribution } from "@anyr/sdk"
+
 /**
  * Settings for `createAnyRouter(...)`.
  */
@@ -30,6 +32,18 @@ export interface AnyRouterProviderSettings {
    * Extra headers merged into every request.
    */
   headers?: Record<string, string>
+
+  /**
+   * Identify your app to AnyRouter, sent as the `X-AnyRouter-*` attribution
+   * headers so your traffic shows up under your own name in usage analytics.
+   *
+   * Opt-in rather than defaulted: unlike `@anyr/sdk`, this provider is
+   * routinely used from a browser, where the gateway already attributes the
+   * request from its `Referer`. A default `X-AnyRouter-Source` would override
+   * that (the explicit header wins server-side) and misattribute browser apps
+   * to the provider library.
+   */
+  app?: AppAttribution
 
   /**
    * Custom fetch implementation.

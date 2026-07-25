@@ -7,7 +7,7 @@ import type {
 } from "@ai-sdk/provider"
 import { NoSuchModelError } from "@ai-sdk/provider"
 import { combineHeaders, loadApiKey, withoutTrailingSlash } from "@ai-sdk/provider-utils"
-import { AnyRouter, DEFAULT_BASE_URL } from "@anyr/sdk"
+import { AnyRouter, buildAppAttributionHeaders, DEFAULT_BASE_URL } from "@anyr/sdk"
 import { AnyRouterChatLanguageModel } from "./anyrouter-chat-language-model"
 import { AnyRouterEmbeddingModel } from "./anyrouter-embedding-model"
 import { AnyRouterFiles } from "./anyrouter-files"
@@ -87,15 +87,17 @@ export function createAnyRouter(options: AnyRouterProviderSettings = {}): AnyRou
     // Keyless mode: no key resolution. Auth comes from ambient sources (same-origin
     // session cookies, or an Authorization passed via `headers`). Avoids the
     // `loadApiKey` throw on the Playground's keyless default flow (#852).
+    // Attribution sits below `options.headers` so an explicit header wins.
+    const attribution = options.app ? buildAppAttributionHeaders(options.app) : {}
     if (options.keyless) {
-      return combineHeaders({}, options.headers)
+      return combineHeaders(attribution, options.headers)
     }
     const apiKey = loadApiKey({
       apiKey: options.apiKey,
       environmentVariableName: "ANYROUTER_API_KEY",
       description: "AnyRouter",
     })
-    return combineHeaders({ Authorization: `Bearer ${apiKey}` }, options.headers)
+    return combineHeaders({ Authorization: `Bearer ${apiKey}`, ...attribution }, options.headers)
   }
 
   function chatModel(modelId: string): AnyRouterChatLanguageModel {
@@ -177,6 +179,7 @@ export function createAnyRouter(options: AnyRouterProviderSettings = {}): AnyRou
         apiKey: options.apiKey,
         baseURL: options.baseURL,
         headers: options.headers,
+        app: options.app,
         fetch: options.fetch,
       })
     },
