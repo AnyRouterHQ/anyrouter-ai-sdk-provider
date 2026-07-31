@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.1.5](https://github.com/duyet/anyrouter/compare/ai-sdk-provider-v0.1.4...ai-sdk-provider-v0.1.5) (2026-07-31)
+
+
+### ✨ Features
+
+* **ai-sdk-provider:** cache passthrough options ([4090989](https://github.com/duyet/anyrouter/commit/409098972bf55d5ba3dd6e4eeca4ec77493683b3))
+* **telemetry:** email engagement tracking and client-type attribution ([ebbdc9d](https://github.com/duyet/anyrouter/commit/ebbdc9dfceb7e263ec39cdab7bea8e9a036f821d))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @anyr/sdk bumped from ^0.1.1 to ^0.1.4
+
 ## 0.1.4 (2026-06-18)
 
 ### 🐛 Bug Fixes
