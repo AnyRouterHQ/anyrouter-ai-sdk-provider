@@ -3,8 +3,8 @@
 The [AnyRouter](https://anyrouter.dev) provider for the [Vercel AI SDK](https://ai-sdk.dev).
 
 Call every model on the AnyRouter gateway through the standard AI SDK
-interface — `generateText`, `streamText`, `generateObject`, `embedMany`,
-`generateImage` — with one key and one provider.
+interface — `generateText`, `streamText`, `generateObject`, `embedMany` —
+with one key and one provider.
 
 ## Install
 
@@ -147,23 +147,6 @@ const { embeddings } = await embedMany({
 console.log(embeddings[0]) // [0.123, -0.456, ...]
 ```
 
-### Image generation
-
-```ts
-import { createAnyRouter } from "@anyr/ai-sdk-provider"
-import { generateImage } from "ai"
-
-const anyrouter = createAnyRouter()
-
-const { image } = await generateImage({
-  model: anyrouter.imageModel("openai/dall-e-3"),
-  prompt: "A serene mountain lake at dawn, oil painting.",
-  size: "1024x1024",
-})
-
-// image.base64 — base64-encoded PNG or URL depending on the model
-```
-
 ### Provider options (routing, session, extra body)
 
 ```ts
@@ -227,7 +210,6 @@ const anyrouter = createAnyRouter({
 | `anyrouter.chat(modelId)` | `LanguageModelV3` | Chat / instruction language model |
 | `anyrouter.languageModel(modelId)` | `LanguageModelV3` | Alias for `.chat()` (ProviderV3 interface) |
 | `anyrouter.embeddingModel(modelId)` | `EmbeddingModelV3` | Text embedding model |
-| `anyrouter.imageModel(modelId)` | `ImageModelV3` | Image generation model |
 | `anyrouter.client` | `AnyRouter` | Raw `@anyr/sdk` client (escape hatch) |
 
 ## Default export

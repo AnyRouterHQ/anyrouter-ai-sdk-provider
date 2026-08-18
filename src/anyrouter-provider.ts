@@ -1,17 +1,10 @@
-import type {
-  EmbeddingModelV4,
-  FilesV4,
-  ImageModelV4,
-  LanguageModelV4,
-  ProviderV4,
-} from "@ai-sdk/provider"
+import type { EmbeddingModelV4, FilesV4, LanguageModelV4, ProviderV4 } from "@ai-sdk/provider"
 import { NoSuchModelError } from "@ai-sdk/provider"
 import { combineHeaders, loadApiKey, withoutTrailingSlash } from "@ai-sdk/provider-utils"
 import { AnyRouter, buildAppAttributionHeaders, DEFAULT_BASE_URL } from "@anyr/sdk"
 import { AnyRouterChatLanguageModel } from "./anyrouter-chat-language-model"
 import { AnyRouterEmbeddingModel } from "./anyrouter-embedding-model"
 import { AnyRouterFiles } from "./anyrouter-files"
-import { AnyRouterImageModel } from "./anyrouter-image-model"
 import { FileReferenceCache } from "./file-reference-cache"
 import type { AnyRouterProviderSettings } from "./types"
 
@@ -120,15 +113,6 @@ export function createAnyRouter(options: AnyRouterProviderSettings = {}): AnyRou
     })
   }
 
-  function imageModel(modelId: string): AnyRouterImageModel {
-    return new AnyRouterImageModel(modelId, {
-      provider: PROVIDER_ID,
-      baseURL,
-      headers: getHeaders,
-      fetch: options.fetch,
-    })
-  }
-
   /**
    * The callable provider — calling it directly returns a chat model.
    */
@@ -145,9 +129,6 @@ export function createAnyRouter(options: AnyRouterProviderSettings = {}): AnyRou
     embeddingModel(modelId: string): EmbeddingModelV4 {
       return embeddingModel(modelId)
     },
-    imageModel(modelId: string): ImageModelV4 {
-      return imageModel(modelId)
-    },
 
     // AnyRouter convenience alias
     chat(modelId: string): LanguageModelV4 {
@@ -159,7 +140,11 @@ export function createAnyRouter(options: AnyRouterProviderSettings = {}): AnyRou
       return new AnyRouterFiles(PROVIDER_ID, sharedFileCache)
     },
 
-    // Unsupported optional model types — throw NoSuchModelError per ProviderV4 contract
+    // Unsupported optional model types — throw NoSuchModelError per ProviderV4 contract.
+    // Image/video generation is not an AnyRouter product (text + embeddings only).
+    imageModel(modelId: string): never {
+      throw new NoSuchModelError({ modelId, modelType: "imageModel" })
+    },
     transcriptionModel(modelId: string): never {
       throw new NoSuchModelError({ modelId, modelType: "transcriptionModel" })
     },

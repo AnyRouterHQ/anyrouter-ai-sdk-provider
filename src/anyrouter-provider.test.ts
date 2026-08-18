@@ -1,7 +1,7 @@
+import { NoSuchModelError } from "@ai-sdk/provider"
 import { describe, expect, it } from "vitest"
 import { AnyRouterChatLanguageModel } from "./anyrouter-chat-language-model"
 import { AnyRouterEmbeddingModel } from "./anyrouter-embedding-model"
-import { AnyRouterImageModel } from "./anyrouter-image-model"
 import { createAnyRouter } from "./anyrouter-provider"
 
 describe("createAnyRouter()", () => {
@@ -35,12 +35,9 @@ describe("createAnyRouter()", () => {
     expect(model.specificationVersion).toBe("v4")
   })
 
-  it(".imageModel() produces an image model", () => {
+  it(".imageModel() is unsupported (text/embeddings only)", () => {
     const ar = createAnyRouter({ apiKey: "test-test" })
-    const model = ar.imageModel("openai/dall-e-3")
-    expect(model).toBeInstanceOf(AnyRouterImageModel)
-    expect(model.modelId).toBe("openai/dall-e-3")
-    expect(model.specificationVersion).toBe("v4")
+    expect(() => ar.imageModel("openai/dall-e-3")).toThrow(NoSuchModelError)
   })
 
   it("specificationVersion is v4 (ProviderV4)", () => {
