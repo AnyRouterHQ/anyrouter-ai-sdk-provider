@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.7](https://github.com/duyet/anyrouter/compare/ai-sdk-provider-v0.1.5...ai-sdk-provider-v0.1.7) (2026-08-20)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @anyr/sdk bumped from ^0.1.3 to ^0.1.5
+
 ## [0.1.5](https://github.com/duyet/anyrouter/compare/ai-sdk-provider-v0.1.4...ai-sdk-provider-v0.1.5) (2026-07-31)
 
 
