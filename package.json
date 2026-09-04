@@ -61,7 +61,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@anyr/sdk": "^0.1.6"
+    "@anyr/sdk": "^1.0.0"
   },
   "peerDependencies": {
     "@ai-sdk/provider": "^4.0.0",
