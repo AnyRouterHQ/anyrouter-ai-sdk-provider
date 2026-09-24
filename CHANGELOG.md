@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.0.0 (2026-09-24)
+
+
+### 🐛 Bug Fixes
+
+* **sdk:** align ai-sdk-provider range with workspace @anyr/sdk 1.0.0 ([#2846](https://github.com/duyet/anyrouter/issues/2846)) ([7cd866e](https://github.com/duyet/anyrouter/commit/7cd866efc67c14c28e90fc43d1c1a7171f542000))
+* **sdk:** restore ai-sdk-provider @anyr/sdk pin to workspace 1.0.0 ([#3041](https://github.com/duyet/anyrouter/issues/3041)) ([1e14da4](https://github.com/duyet/anyrouter/commit/1e14da46cfc9e582ddbd302e9fac70ba1b1ff4ef))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @anyr/sdk bumped from ^1.0.1 to ^1.0.0
+
 ## [0.1.10](https://github.com/duyet/anyrouter/compare/ai-sdk-provider-v1.0.0...ai-sdk-provider-v0.1.10) (2026-09-24)
 
 
