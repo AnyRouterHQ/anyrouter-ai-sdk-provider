@@ -1,6 +1,6 @@
 {
   "name": "@anyr/ai-sdk-provider",
-  "version": "0.1.8",
+  "version": "1.0.0",
   "description": "The AnyRouter provider for the Vercel AI SDK — call every AnyRouter model through `createAnyRouter`.",
   "type": "module",
   "main": "./dist/index.js",
