@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.0.1](https://github.com/duyet/anyrouter/compare/ai-sdk-provider-v1.0.0...ai-sdk-provider-v1.0.1) (2026-09-28)
+
+
+### 🐛 Bug Fixes
+
+* **release:** repair version drift from stale release-please branch merges ([#3555](https://github.com/duyet/anyrouter/issues/3555)) ([ff0a89f](https://github.com/duyet/anyrouter/commit/ff0a89f1051e6a22bae1ae76ed4bed85e3330102))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @anyr/sdk bumped from ^1.0.1 to ^1.0.2
+
 ## 1.0.0 (2026-09-24)
 
 
