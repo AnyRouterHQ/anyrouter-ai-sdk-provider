@@ -85,7 +85,7 @@ const toolCallDeltaSchema = z.object({
 const messageSchema = z.object({
   content: z.string().nullish(),
   reasoning_content: z.string().nullish(),
-  tool_calls: z.array(toolCallSchema).optional(),
+  tool_calls: z.array(toolCallSchema).nullish(),
 })
 
 const choiceSchema = z.object({
@@ -97,13 +97,13 @@ const generateResponseSchema = z.object({
   id: z.string().optional(),
   model: z.string().optional(),
   choices: z.array(choiceSchema).optional(),
-  usage: completionUsageSchema.optional(),
+  usage: completionUsageSchema.nullish(),
 })
 
 const deltaSchema = z.object({
   content: z.string().nullish(),
   reasoning_content: z.string().nullish(),
-  tool_calls: z.array(toolCallDeltaSchema).optional(),
+  tool_calls: z.array(toolCallDeltaSchema).nullish(),
 })
 
 const streamChoiceSchema = z.object({
@@ -115,7 +115,7 @@ const streamChunkSchema = z.object({
   id: z.string().optional(),
   model: z.string().optional(),
   choices: z.array(streamChoiceSchema).optional(),
-  usage: completionUsageSchema.optional(),
+  usage: completionUsageSchema.nullish(),
 })
 
 // ─── Finish reason mapping ─────────────────────────────────────────────────
@@ -146,6 +146,7 @@ function buildUsage(
         completion_tokens?: number | null
         total_tokens?: number | null
       }
+    | null
     | undefined,
 ): LanguageModelV4Usage {
   return {

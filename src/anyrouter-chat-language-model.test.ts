@@ -86,6 +86,19 @@ describe("AnyRouterChatLanguageModel.doGenerate()", () => {
     expect(result.response?.id).toBe("gen-abc")
   })
 
+  it("accepts null usage and null tool_calls in a non-streaming response", async () => {
+    const ar = createAnyRouter({
+      apiKey: "test-test",
+      fetch: mockFetch({
+        id: "gen-null",
+        choices: [{ message: { content: "ok", tool_calls: null }, finish_reason: "stop" }],
+        usage: null,
+      }),
+    })
+    const result = await ar("reflection/beam-1.0").doGenerate({ prompt: makePrompt("hi") })
+    expect(result.content[0]).toMatchObject({ type: "text", text: "ok" })
+  })
+
   it("maps tool-call response", async () => {
     const ar = createAnyRouter({
       apiKey: "test-test",
@@ -430,6 +443,43 @@ describe("AnyRouterChatLanguageModel.doGenerate()", () => {
 // ─── doStream ─────────────────────────────────────────────────────────────
 
 describe("AnyRouterChatLanguageModel.doStream()", () => {
+  // reflection/beam-1.0 (Hermes upstream) sends `usage: null` and
+  // `tool_calls: null` on every non-final chunk, as OpenAI does with
+  // include_usage. The playground failed with "Invalid input: expected object,
+  // received null" because the chunk schema only allowed `usage` to be absent.
+  it("accepts null usage and null tool_calls on stream chunks", async () => {
+    const ar = createAnyRouter({
+      apiKey: "test-test",
+      fetch: mockSseFetch([
+        {
+          id: "gen-null",
+          choices: [{ index: 0, delta: { role: "assistant" }, finish_reason: null }],
+          usage: null,
+        },
+        {
+          choices: [{ index: 0, delta: { content: "Hi", tool_calls: null }, finish_reason: null }],
+          usage: null,
+        },
+        { choices: [{ index: 0, delta: {}, finish_reason: "stop" }], usage: null },
+        { choices: [], usage: { prompt_tokens: 4, completion_tokens: 2 } },
+      ]),
+    })
+    const { stream } = await ar("reflection/beam-1.0").doStream({ prompt: makePrompt("hi") })
+    const parts: LanguageModelV4StreamPart[] = []
+    const reader = stream.getReader()
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      parts.push(value)
+    }
+    expect(parts.some((p) => p.type === "error")).toBe(false)
+    const finish = parts.find(
+      (p): p is Extract<LanguageModelV4StreamPart, { type: "finish" }> => p.type === "finish",
+    )
+    expect(finish?.usage.inputTokens.total).toBe(4)
+    expect(finish?.finishReason.unified).toBe("stop")
+  })
+
   it("emits stream-start, text-start, text-delta, text-end, finish in order", async () => {
     const ar = createAnyRouter({
       apiKey: "test-test",
