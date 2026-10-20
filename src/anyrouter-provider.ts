@@ -79,7 +79,7 @@ export function createAnyRouter(options: AnyRouterProviderSettings = {}): AnyRou
   function getHeaders(): Record<string, string | undefined> {
     // Keyless mode: no key resolution. Auth comes from ambient sources (same-origin
     // session cookies, or an Authorization passed via `headers`). Avoids the
-    // `loadApiKey` throw on the Playground's keyless default flow (#852).
+    // `loadApiKey` throw on the Playground's keyless default flow.
     // Attribution sits below `options.headers` so an explicit header wins.
     const attribution = options.app ? buildAppAttributionHeaders(options.app) : {}
     if (options.keyless) {

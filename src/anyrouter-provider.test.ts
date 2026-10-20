@@ -90,7 +90,7 @@ describe("createAnyRouter()", () => {
     }
   })
 
-  // ─── keyless mode (#852) ───────────────────────────────────────────────────
+  // ─── keyless mode ───────────────────────────────────────────────────
 
   it("keyless: omits the Authorization header instead of throwing on missing key", async () => {
     let capturedAuth: string | null = "unset"
