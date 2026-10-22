@@ -33,8 +33,6 @@ const anyRouterProviderOptionsSchema = z.object({
   extraBody: z.record(z.string(), z.unknown()).optional(),
   /** Cache this response for N seconds, forwarded as the `cf-aig-cache-ttl` header. */
   cacheTtl: z.number().optional(),
-  /** Custom cache key, forwarded as the `cf-aig-cache-key` header. */
-  cacheKey: z.string().optional(),
   /** Skip response caching for this call, forwarded as `cf-aig-skip-cache: true`. */
   skipCache: z.boolean().optional(),
 })
@@ -435,7 +433,7 @@ function buildRequestBody(
 // ─── Cache header builder ──────────────────────────────────────────────────
 
 /**
- * Translate the `cacheTtl` / `cacheKey` / `skipCache` settings + per-call
+ * Translate the `cacheTtl` / `skipCache` settings + per-call
  * provider options into their Cloudflare AI Gateway header equivalents.
  * Per-call options take precedence over provider-level settings; each header
  * is omitted when its value is undefined (or `false` for `skipCache`).
@@ -445,12 +443,10 @@ function buildCacheHeaders(
   perCallOptions: AnyRouterChatProviderOptions,
 ): Record<string, string> {
   const cacheTtl = perCallOptions.cacheTtl ?? settings.cacheTtl
-  const cacheKey = perCallOptions.cacheKey ?? settings.cacheKey
   const skipCache = perCallOptions.skipCache ?? settings.skipCache
 
   const headers: Record<string, string> = {}
   if (cacheTtl !== undefined) headers["cf-aig-cache-ttl"] = String(cacheTtl)
-  if (cacheKey !== undefined) headers["cf-aig-cache-key"] = cacheKey
   if (skipCache === true) headers["cf-aig-skip-cache"] = "true"
   return headers
 }

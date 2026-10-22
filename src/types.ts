@@ -78,14 +78,6 @@ export interface AnyRouterProviderSettings {
   cacheTtl?: number
 
   /**
-   * Custom cache key for Cloudflare AI Gateway response caching, so requests
-   * with different content can share a cached response. Sent as
-   * `cf-aig-cache-key`. Per-call `providerOptions.anyrouter.cacheKey` takes
-   * precedence.
-   */
-  cacheKey?: string
-
-  /**
    * Skip Cloudflare AI Gateway response caching for every request, even if a
    * default cache policy would otherwise apply. Sent as
    * `cf-aig-skip-cache: true`. Per-call `providerOptions.anyrouter.skipCache`

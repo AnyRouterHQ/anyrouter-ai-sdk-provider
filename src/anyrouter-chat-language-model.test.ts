@@ -255,13 +255,12 @@ describe("AnyRouterChatLanguageModel.doGenerate()", () => {
     expect((capturedBody as Record<string, unknown>).session_id).toBe("override")
   })
 
-  it("sends cf-aig-cache-ttl / cf-aig-cache-key / cf-aig-skip-cache from settings", async () => {
+  it("sends cf-aig-cache-ttl / cf-aig-skip-cache from settings", async () => {
     let capturedHeaders: Headers | undefined
 
     const ar = createAnyRouter({
       apiKey: "test-test",
       cacheTtl: 300,
-      cacheKey: "settings-key",
       skipCache: true,
       fetch: async (_url, init) => {
         capturedHeaders = new Headers(init?.headers)
@@ -278,7 +277,6 @@ describe("AnyRouterChatLanguageModel.doGenerate()", () => {
     await ar("openai/gpt-4o-mini").doGenerate({ prompt: makePrompt("hi") })
 
     expect(capturedHeaders?.get("cf-aig-cache-ttl")).toBe("300")
-    expect(capturedHeaders?.get("cf-aig-cache-key")).toBe("settings-key")
     expect(capturedHeaders?.get("cf-aig-skip-cache")).toBe("true")
   })
 
@@ -303,12 +301,36 @@ describe("AnyRouterChatLanguageModel.doGenerate()", () => {
     await ar("openai/gpt-4o-mini").doGenerate({
       prompt: makePrompt("hi"),
       providerOptions: {
-        anyrouter: { cacheTtl: 60, cacheKey: "call-key" },
+        anyrouter: { cacheTtl: 60 },
       },
     })
 
     expect(capturedHeaders?.get("cf-aig-cache-ttl")).toBe("60")
-    expect(capturedHeaders?.get("cf-aig-cache-key")).toBe("call-key")
+  })
+
+  it("never sends cf-aig-cache-key, even when a caller passes the removed cacheKey option", async () => {
+    let capturedHeaders: Headers | undefined
+
+    const ar = createAnyRouter({
+      apiKey: "test-test",
+      fetch: async (_url, init) => {
+        capturedHeaders = new Headers(init?.headers)
+        return new Response(
+          JSON.stringify({
+            choices: [{ message: { content: "ok" }, finish_reason: "stop" }],
+            usage: { prompt_tokens: 5, completion_tokens: 2 },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        )
+      },
+    })
+
+    await ar("openai/gpt-4o-mini").doGenerate({
+      prompt: makePrompt("hi"),
+      providerOptions: { anyrouter: { cacheKey: "shared-across-tenants" } },
+    })
+
+    expect(capturedHeaders?.has("cf-aig-cache-key")).toBe(false)
   })
 
   it("omits all cf-aig-* headers when no cache options are set", async () => {
