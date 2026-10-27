@@ -1,4 +1,8 @@
-import type { LanguageModelV4CallOptions, LanguageModelV4StreamPart } from "@ai-sdk/provider"
+import {
+  APICallError,
+  type LanguageModelV4CallOptions,
+  type LanguageModelV4StreamPart,
+} from "@ai-sdk/provider"
 import { describe, expect, it } from "vitest"
 import { createAnyRouter } from "./anyrouter-provider"
 
@@ -673,5 +677,54 @@ describe("AnyRouterChatLanguageModel.doStream()", () => {
       )
       .map((p) => p.delta)
     expect(reasoning).toEqual(["Let me ", "think."])
+  })
+})
+
+describe("AnyRouterChatLanguageModel.doStream() error frame", () => {
+  // The gateway reports a mid-stream failure as `data: {"error":{...}}` on a
+  // 200 response. Dropping that frame ends the turn as an empty answer with
+  // finishReason "other" and no error, so the caller never learns why.
+  it("surfaces a mid-stream error frame as an error part with the gateway code and message", async () => {
+    const ar = createAnyRouter({
+      apiKey: "test-test",
+      fetch: mockSseFetch([
+        { id: "gen-err", choices: [{ delta: { role: "assistant" }, finish_reason: null }] },
+        {
+          error: {
+            message: "All upstreams failed",
+            code: "upstream_exhausted",
+            metadata: { upstream_attempts: [{ backend: "minimax", status: 503 }] },
+          },
+        },
+      ]),
+    })
+    const { stream } = await ar("minimax/minimax-m3.1-flash").doStream({
+      prompt: makePrompt("hi"),
+    })
+    const parts: LanguageModelV4StreamPart[] = []
+    const reader = stream.getReader()
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      parts.push(value)
+    }
+
+    const errorPart = parts.find(
+      (p): p is Extract<LanguageModelV4StreamPart, { type: "error" }> => p.type === "error",
+    )
+    expect(errorPart).toBeDefined()
+    const error = errorPart?.error
+    expect(APICallError.isInstance(error)).toBe(true)
+    if (!APICallError.isInstance(error)) throw new Error("not an APICallError")
+    expect(error.message).toBe("All upstreams failed")
+    expect(JSON.parse(error.responseBody ?? "")).toMatchObject({
+      error: { code: "upstream_exhausted", message: "All upstreams failed" },
+    })
+
+    const finish = parts.find(
+      (p): p is Extract<LanguageModelV4StreamPart, { type: "finish" }> => p.type === "finish",
+    )
+    expect(finish?.finishReason.unified).toBe("error")
+    expect(parts.some((p) => p.type === "text-delta")).toBe(false)
   })
 })

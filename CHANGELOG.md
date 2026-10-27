@@ -6,6 +6,10 @@
 
 * removed the `cacheKey` provider setting and `providerOptions.anyrouter.cacheKey`. The API no longer forwards a client `cf-aig-cache-key` (a custom key was shared across all callers of the gateway), so it did nothing. `cacheTtl` and `skipCache` are unchanged.
 
+### Bug Fixes
+
+* a mid-stream `data: {"error":{...}}` frame now ends the stream with an `error` part (an `APICallError` that keeps the gateway `code` and `message` in `responseBody`) and finish reason `error`. Before, the frame was dropped and the turn ended as an empty answer.
+
 ## [1.0.2](https://github.com/duyet/anyrouter/compare/ai-sdk-provider-v1.0.1...ai-sdk-provider-v1.0.2) (2026-10-02)
 
 

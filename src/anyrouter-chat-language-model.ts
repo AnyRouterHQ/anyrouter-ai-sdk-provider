@@ -1,11 +1,12 @@
-import type {
-  LanguageModelV4,
-  LanguageModelV4CallOptions,
-  LanguageModelV4FinishReason,
-  LanguageModelV4GenerateResult,
-  LanguageModelV4StreamPart,
-  LanguageModelV4StreamResult,
-  LanguageModelV4Usage,
+import {
+  APICallError,
+  type LanguageModelV4,
+  type LanguageModelV4CallOptions,
+  type LanguageModelV4FinishReason,
+  type LanguageModelV4GenerateResult,
+  type LanguageModelV4StreamPart,
+  type LanguageModelV4StreamResult,
+  type LanguageModelV4Usage,
 } from "@ai-sdk/provider"
 import type { ParseResult } from "@ai-sdk/provider-utils"
 import {
@@ -114,6 +115,9 @@ const streamChunkSchema = z.object({
   model: z.string().optional(),
   choices: z.array(streamChoiceSchema).optional(),
   usage: completionUsageSchema.nullish(),
+  // A mid-stream failure arrives as a `data: {"error":{...}}` frame on a 200
+  // response, in the same envelope the gateway uses for non-2xx bodies.
+  error: anyRouterErrorSchema.shape.error,
 })
 
 // ─── Finish reason mapping ─────────────────────────────────────────────────
@@ -130,6 +134,8 @@ function mapFinishReason(raw: string | null | undefined): LanguageModelV4FinishR
       return { unified: "tool-calls", raw: raw }
     case "content_filter":
       return { unified: "content-filter", raw: raw }
+    case "error":
+      return { unified: "error", raw: raw }
     default:
       return { unified: "other", raw: raw ?? undefined }
   }
@@ -273,6 +279,44 @@ function emitToolCallDeltas(
         delta: tcDelta.function.arguments,
       })
     }
+  }
+}
+
+function emitDelta(
+  delta: NonNullable<StreamChoice["delta"]>,
+  state: StreamState,
+  acc: ToolCallAccumulator,
+  controller: StreamController,
+): void {
+  if (typeof delta.reasoning_content === "string" && delta.reasoning_content.length > 0) {
+    emitReasoningDelta(delta.reasoning_content, state, controller)
+  }
+  if (typeof delta.content === "string" && delta.content.length > 0) {
+    emitTextDelta(delta.content, state, controller)
+  }
+  if (delta.tool_calls) {
+    emitToolCallDeltas(delta.tool_calls, acc, controller)
+  }
+}
+
+/**
+ * An `APICallError` keeps the envelope in `responseBody`, so callers recover
+ * the gateway `code` and `message` the same way they do for a non-2xx body.
+ */
+function errorFramePart(
+  chunk: StreamChunk,
+  request: { url: string; body: unknown; responseHeaders?: Record<string, string> },
+): LanguageModelV4StreamPart {
+  return {
+    type: "error",
+    error: new APICallError({
+      message: chunk.error?.message ?? "AnyRouter API error",
+      url: request.url,
+      requestBodyValues: request.body,
+      responseHeaders: request.responseHeaders,
+      responseBody: JSON.stringify(chunk),
+      data: chunk,
+    }),
   }
 }
 
@@ -577,8 +621,9 @@ export class AnyRouterChatLanguageModel implements LanguageModelV4 {
       this.config.fileCache,
     )
 
+    const url = `${this.config.baseURL}/chat/completions`
     const { value: stream, responseHeaders } = await postJsonToApi({
-      url: `${this.config.baseURL}/chat/completions`,
+      url,
       headers: combineHeaders(
         this.config.headers(),
         buildCacheHeaders(this.config.settings, perCallOptions),
@@ -625,6 +670,11 @@ export class AnyRouterChatLanguageModel implements LanguageModelV4 {
         }
 
         const chunk = chunkResult.value
+        if (chunk.error) {
+          controller.enqueue(errorFramePart(chunk, { url, body, responseHeaders }))
+          finishChoice = { finish_reason: "error" }
+          return
+        }
         const choice = chunk.choices?.[0]
 
         // Capture usage from whichever chunk carries it (often a trailing
@@ -633,18 +683,7 @@ export class AnyRouterChatLanguageModel implements LanguageModelV4 {
 
         emitResponseMetadata(chunk, state, selfModelId, controller)
 
-        const delta = choice?.delta
-        if (delta) {
-          if (typeof delta.reasoning_content === "string" && delta.reasoning_content.length > 0) {
-            emitReasoningDelta(delta.reasoning_content, state, controller)
-          }
-          if (typeof delta.content === "string" && delta.content.length > 0) {
-            emitTextDelta(delta.content, state, controller)
-          }
-          if (delta.tool_calls) {
-            emitToolCallDeltas(delta.tool_calls, toolCallAccumulator, controller)
-          }
-        }
+        if (choice?.delta) emitDelta(choice.delta, state, toolCallAccumulator, controller)
 
         if (choice?.finish_reason) {
           finishChoice = choice
