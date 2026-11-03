@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { FileReferenceCache, fileDataVariantToUrl, hashFileData } from "./file-reference-cache"
 
-// ─── FileReferenceCache ───────────────────────────────────────────────────
-
 describe("FileReferenceCache", () => {
   it("stores and retrieves an entry by anyrouter provider key", () => {
     const cache = new FileReferenceCache()
@@ -59,8 +57,6 @@ describe("FileReferenceCache", () => {
   })
 })
 
-// ─── hashFileData ─────────────────────────────────────────────────────────
-
 describe("hashFileData()", () => {
   it("returns a 64-character hex string for Uint8Array data", async () => {
     const bytes = new Uint8Array([1, 2, 3, 4])
@@ -103,8 +99,6 @@ describe("hashFileData()", () => {
     expect(a).not.toBe(b)
   })
 })
-
-// ─── fileDataVariantToUrl ─────────────────────────────────────────────────
 
 describe("fileDataVariantToUrl()", () => {
   it("wraps a base64 string in a data URL", () => {

@@ -10,8 +10,6 @@ import type { AnyRouterProviderSettings } from "./types"
 
 const PROVIDER_ID = "anyrouter"
 
-// ─── Provider interface ────────────────────────────────────────────────────
-
 export interface AnyRouterProvider extends ProviderV4 {
   /** Create a chat language model by calling the provider directly. */
   (modelId: string): LanguageModelV4
@@ -43,8 +41,6 @@ export interface AnyRouterProvider extends ProviderV4 {
    */
   files(): FilesV4
 }
-
-// ─── Factory ───────────────────────────────────────────────────────────────
 
 /**
  * Create an AnyRouter provider for the Vercel AI SDK.

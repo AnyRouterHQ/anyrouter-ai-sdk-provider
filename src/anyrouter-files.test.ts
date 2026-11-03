@@ -15,8 +15,6 @@ describe("AnyRouterFiles", () => {
     expect(files.provider).toBe("anyrouter")
   })
 
-  // ─── uploadFile ──────────────────────────────────────────────────────────
-
   it("returns a provider reference with anyrouter key for data (Uint8Array)", async () => {
     const { files } = makeFiles()
     const result = await files.uploadFile({

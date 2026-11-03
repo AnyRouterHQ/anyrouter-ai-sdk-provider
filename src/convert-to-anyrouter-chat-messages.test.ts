@@ -4,8 +4,6 @@ import { describe, expect, it } from "vitest"
 import { convertToAnyRouterChatMessages } from "./convert-to-anyrouter-chat-messages"
 import { FileReferenceCache } from "./file-reference-cache"
 
-// ─── helpers ─────────────────────────────────────────────────────────────
-
 function filePart(
   data: LanguageModelV4FilePart["data"],
   mediaType: string,
@@ -16,8 +14,6 @@ function filePart(
 function userMsg(content: LanguageModelV4FilePart["data"], mediaType: string) {
   return convertToAnyRouterChatMessages([{ role: "user", content: [filePart(content, mediaType)] }])
 }
-
-// ─── data discriminant ────────────────────────────────────────────────────
 
 describe("convertToAnyRouterChatMessages — file parts", () => {
   describe("data discriminant (Uint8Array → base64 data URL)", () => {
@@ -61,8 +57,6 @@ describe("convertToAnyRouterChatMessages — file parts", () => {
     })
   })
 
-  // ─── url discriminant ──────────────────────────────────────────────────
-
   describe("url discriminant", () => {
     it("passes an https URL through as image_url for image media types", () => {
       const msgs = userMsg(
@@ -89,8 +83,6 @@ describe("convertToAnyRouterChatMessages — file parts", () => {
     })
   })
 
-  // ─── text discriminant ─────────────────────────────────────────────────
-
   describe("text discriminant", () => {
     it("encodes inline text as a base64 data URL", () => {
       const msgs = userMsg({ type: "text", text: "Hello" }, "text/plain")
@@ -102,8 +94,6 @@ describe("convertToAnyRouterChatMessages — file parts", () => {
       })
     })
   })
-
-  // ─── reference discriminant ───────────────────────────────────────────
 
   describe("reference discriminant", () => {
     it("throws UnsupportedFunctionalityError when no cache is provided", () => {
@@ -214,8 +204,6 @@ describe("convertToAnyRouterChatMessages — file parts", () => {
       expect(url1).toBe(url0)
     })
   })
-
-  // ─── provider integration — uploadFile → message conversion ──────────
 
   describe("integration: provider.files().uploadFile() → convertToAnyRouterChatMessages()", () => {
     it("round-trips: a file uploaded via uploadFile is resolved in message conversion", async () => {

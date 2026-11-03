@@ -23,8 +23,6 @@ import { convertToAnyRouterChatMessages } from "./convert-to-anyrouter-chat-mess
 import type { FileReferenceCache } from "./file-reference-cache"
 import type { AnyRouterProviderSettings } from "./types"
 
-// ─── Provider options (per-call) ───────────────────────────────────────────
-
 const anyRouterProviderOptionsSchema = z.object({
   /** Routing preference forwarded as `provider` in the request body. */
   provider: z.record(z.string(), z.unknown()).optional(),
@@ -39,8 +37,6 @@ const anyRouterProviderOptionsSchema = z.object({
 })
 
 type AnyRouterChatProviderOptions = z.infer<typeof anyRouterProviderOptionsSchema>
-
-// ─── Zod schemas for response / chunk validation ───────────────────────────
 
 const anyRouterErrorSchema = z.object({
   error: z
@@ -120,8 +116,6 @@ const streamChunkSchema = z.object({
   error: anyRouterErrorSchema.shape.error,
 })
 
-// ─── Finish reason mapping ─────────────────────────────────────────────────
-
 function mapFinishReason(raw: string | null | undefined): LanguageModelV4FinishReason {
   switch (raw) {
     case "stop":
@@ -140,8 +134,6 @@ function mapFinishReason(raw: string | null | undefined): LanguageModelV4FinishR
       return { unified: "other", raw: raw ?? undefined }
   }
 }
-
-// ─── Usage conversion ──────────────────────────────────────────────────────
 
 function buildUsage(
   raw:
@@ -168,8 +160,6 @@ function buildUsage(
   }
 }
 
-// ─── Reasoning parameter mapping ───────────────────────────────────────────
-
 /**
  * Map the AI SDK 7 portable `reasoning` parameter to the AnyRouter gateway's
  * `reasoning_effort` field.
@@ -188,8 +178,6 @@ function mapReasoningEffort(
   if (reasoning === "xhigh") return "high"
   return reasoning
 }
-
-// ─── Stream transform helpers ──────────────────────────────────────────────
 
 type StreamChunk = z.infer<typeof streamChunkSchema>
 type StreamChoice = z.infer<typeof streamChoiceSchema>
@@ -351,8 +339,6 @@ function emitFinish(
   })
 }
 
-// ─── Tool-choice mapping ───────────────────────────────────────────────────
-
 type OpenAIToolChoice =
   | "auto"
   | "none"
@@ -374,8 +360,6 @@ function mapToolChoice(
       return { type: "function", function: { name: toolChoice.toolName } }
   }
 }
-
-// ─── Request body builder helpers ─────────────────────────────────────────
 
 type ResponseFormat =
   | { type: "text" }
@@ -421,8 +405,6 @@ function buildTools(
     }))
   return fns.length > 0 ? fns : undefined
 }
-
-// ─── Request body builder ──────────────────────────────────────────────────
 
 function buildRequestBody(
   modelId: string,
@@ -474,8 +456,6 @@ function buildRequestBody(
   return body
 }
 
-// ─── Cache header builder ──────────────────────────────────────────────────
-
 /**
  * Translate the `cacheTtl` / `skipCache` settings + per-call
  * provider options into their Cloudflare AI Gateway header equivalents.
@@ -494,8 +474,6 @@ function buildCacheHeaders(
   if (skipCache === true) headers["cf-aig-skip-cache"] = "true"
   return headers
 }
-
-// ─── AnyRouterChatLanguageModel ────────────────────────────────────────────
 
 export interface AnyRouterChatConfig {
   provider: string
@@ -524,8 +502,6 @@ export class AnyRouterChatLanguageModel implements LanguageModelV4 {
     this.provider = config.provider
     this.config = config
   }
-
-  // ─── doGenerate ─────────────────────────────────────────────────────────
 
   async doGenerate(options: LanguageModelV4CallOptions): Promise<LanguageModelV4GenerateResult> {
     const perCallOptions: AnyRouterChatProviderOptions =
@@ -601,8 +577,6 @@ export class AnyRouterChatLanguageModel implements LanguageModelV4 {
       },
     }
   }
-
-  // ─── doStream ───────────────────────────────────────────────────────────
 
   async doStream(options: LanguageModelV4CallOptions): Promise<LanguageModelV4StreamResult> {
     const perCallOptions: AnyRouterChatProviderOptions =

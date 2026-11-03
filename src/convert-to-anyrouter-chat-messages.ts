@@ -9,8 +9,6 @@ import type {
 import { UnsupportedFunctionalityError } from "@ai-sdk/provider"
 import type { FileReferenceCache } from "./file-reference-cache"
 
-// ─── OpenAI-compatible message shapes ─────────────────────────────────────
-
 type TextContentPart = { type: "text"; text: string }
 type ImageUrlContentPart = {
   type: "image_url"

@@ -6,8 +6,6 @@ import {
 import { describe, expect, it } from "vitest"
 import { createAnyRouter } from "./anyrouter-provider"
 
-// ─── Helpers ───────────────────────────────────────────────────────────────
-
 function makePrompt(text: string): LanguageModelV4CallOptions["prompt"] {
   return [{ role: "user", content: [{ type: "text", text }] }]
 }
@@ -42,8 +40,6 @@ function mockSseFetch(chunks: unknown[]): typeof globalThis.fetch {
     })
   }
 }
-
-// ─── doGenerate ────────────────────────────────────────────────────────────
 
 describe("AnyRouterChatLanguageModel.doGenerate()", () => {
   it("sends correct request body and maps text response", async () => {
@@ -465,8 +461,6 @@ describe("AnyRouterChatLanguageModel.doGenerate()", () => {
     expect((capturedBody as Record<string, unknown>).reasoning_effort).toBeUndefined()
   })
 })
-
-// ─── doStream ─────────────────────────────────────────────────────────────
 
 describe("AnyRouterChatLanguageModel.doStream()", () => {
   // reflection/beam-1.0 (Hermes upstream) sends `usage: null` and
