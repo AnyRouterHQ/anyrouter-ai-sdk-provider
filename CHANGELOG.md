@@ -10,6 +10,20 @@
 
 * a mid-stream `data: {"error":{...}}` frame now ends the stream with an `error` part (an `APICallError` that keeps the gateway `code` and `message` in `responseBody`) and finish reason `error`. Before, the frame was dropped and the turn ended as an empty answer.
 
+## [1.0.3](https://github.com/duyet/anyrouter/compare/ai-sdk-provider-v1.0.2...ai-sdk-provider-v1.0.3) (2026-11-04)
+
+
+### ♻️ Refactoring
+
+* **ai-sdk-provider:** drop section banner comments ([82941d1](https://github.com/duyet/anyrouter/commit/82941d18072bb200590433ab3b93e90c291bd3f3))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @anyr/sdk bumped from ^1.0.3 to ^1.0.4
+
 ## [1.0.2](https://github.com/duyet/anyrouter/compare/ai-sdk-provider-v1.0.1...ai-sdk-provider-v1.0.2) (2026-10-02)
 
 
