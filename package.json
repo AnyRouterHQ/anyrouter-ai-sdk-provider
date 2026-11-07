@@ -55,6 +55,7 @@
     "url": "https://github.com/AnyRouterHQ/anyrouter-ai-sdk-provider/issues"
   },
   "author": "Duyet Le",
+  "packageManager": "pnpm@12.16.1",
   "license": "MIT",
   "publishConfig": {
     "access": "public"
