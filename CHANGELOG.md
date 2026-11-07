@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## [0.1.7](https://github.com/AnyRouterHQ/anyrouter-ai-sdk-provider/compare/v0.1.6...v0.1.7) (2026-11-07)
+
+First release from the standalone repo `AnyRouterHQ/anyrouter-ai-sdk-provider`. The code moved from the `packages/ai-sdk-provider` folder in the `anyrouter` monorepo with its full related history (38 commits). This release supersedes the unpublished monorepo 0.1.7–1.0.3 line. It works with the published `@anyr/sdk@0.1.3`: the app-attribution helper (`buildAppAttributionHeaders`) is vendored in this package because the published SDK does not export it (the previous `0.1.6` tarball import would fail at load).
 
 ### ⚠ BREAKING CHANGES
 
@@ -9,6 +11,7 @@
 ### Bug Fixes
 
 * a mid-stream `data: {"error":{...}}` frame now ends the stream with an `error` part (an `APICallError` that keeps the gateway `code` and `message` in `responseBody`) and finish reason `error`. Before, the frame was dropped and the turn ended as an empty answer.
+* fixed unconditional import of `buildAppAttributionHeaders` from `@anyr/sdk` (missing in `0.1.3`) by vendoring the helper locally; `createAnyRouter()` now loads with the published SDK.
 
 ## [1.0.3](https://github.com/duyet/anyrouter/compare/ai-sdk-provider-v1.0.2...ai-sdk-provider-v1.0.3) (2026-11-04)
 

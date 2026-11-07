@@ -1,4 +1,4 @@
-import type { AppAttribution } from "@anyr/sdk"
+import type { AppAttribution } from "./app-attribution"
 
 /**
  * Settings for `createAnyRouter(...)`.

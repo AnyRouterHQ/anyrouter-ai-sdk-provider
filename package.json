@@ -1,6 +1,6 @@
 {
   "name": "@anyr/ai-sdk-provider",
-  "version": "1.0.3",
+  "version": "0.1.7",
   "description": "The AnyRouter provider for the Vercel AI SDK — call every AnyRouter model through `createAnyRouter`.",
   "type": "module",
   "main": "./dist/index.js",
@@ -49,11 +49,10 @@
   "homepage": "https://anyrouter.dev",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/duyet/anyrouter.git",
-    "directory": "packages/ai-sdk-provider"
+    "url": "git+https://github.com/AnyRouterHQ/anyrouter-ai-sdk-provider.git"
   },
   "bugs": {
-    "url": "https://github.com/duyet/anyrouter/issues"
+    "url": "https://github.com/AnyRouterHQ/anyrouter-ai-sdk-provider/issues"
   },
   "author": "Duyet Le",
   "license": "MIT",
@@ -61,7 +60,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@anyr/sdk": "^1.0.4"
+    "@anyr/sdk": "^0.1.3"
   },
   "peerDependencies": {
     "@ai-sdk/provider": "^4.0.0",
@@ -70,10 +69,14 @@
     "zod": "^3.25.0 || ^4.0.0"
   },
   "devDependencies": {
-    "@ai-sdk/provider": "^4.0.0",
-    "@ai-sdk/provider-utils": "^5.0.0",
+    "@ai-sdk/provider": "4.0.2",
+    "@ai-sdk/provider-utils": "5.0.5",
     "@types/node": "^24.0.0",
-    "ai": "^7.0.0",
-    "zod": "^4.6.7"
+    "@typescript/native-preview": "7.0.0-dev.20260707.2",
+    "ai": "7.0.15",
+    "tsup": "^8.5.1",
+    "typescript": "^6.0.3",
+    "vitest": "^5.1.0",
+    "zod": "4.6.7"
   }
 }

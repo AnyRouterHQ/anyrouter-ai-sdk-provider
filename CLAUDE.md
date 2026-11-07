@@ -2,10 +2,13 @@
 
 Published Vercel AI SDK provider for AnyRouter. It exposes `createAnyRouter` and wraps `@anyr/sdk`.
 
+Standalone repo. Moved from `packages/ai-sdk-provider` in the `anyrouter` monorepo on 2026-11-07 with its 38-commit related history. The npm name stays `@anyr/ai-sdk-provider`; 0.1.7 is the first release from this repo.
+
 ## Entry points
 
 - `src/index.ts`: public barrel. `package.json` `exports` points at `dist/` (tsup output).
 - `src/anyrouter-provider.ts`: the `createAnyRouter` provider factory.
+- `src/app-attribution.ts`: vendored `AppAttribution` + `buildAppAttributionHeaders` (the published `@anyr/sdk@0.1.3` does not export them).
 
 ## Where things live
 
@@ -17,25 +20,26 @@ Published Vercel AI SDK provider for AnyRouter. It exposes `createAnyRouter` and
 | `src/anyrouter-files.ts` | File input handling |
 | `src/file-reference-cache.ts` | Cache for file references |
 | `src/convert-to-anyrouter-chat-messages.ts` | AI SDK prompt to AnyRouter chat message conversion |
-| `src/types.ts` | Shared option types |
+| `src/app-attribution.ts` | App attribution headers (vendored, see above) |
+| `src/types.ts` | Shared option types (`AnyRouterProviderSettings`) |
 | `src/*.test.ts` | Colocated vitest specs |
 
 ## Key commands
 
 From `package.json` scripts:
 
-- `pnpm --filter @anyr/ai-sdk-provider build`: `tsup`, writes `dist/`.
-- `pnpm --filter @anyr/ai-sdk-provider dev`: `tsup --watch`.
-- `pnpm --filter @anyr/ai-sdk-provider typecheck`: `tsc --noEmit`.
-- `pnpm --filter @anyr/ai-sdk-provider test`: `vitest run`.
-- `pnpm --filter @anyr/ai-sdk-provider clean`: removes `dist`.
+- `pnpm build`: `tsup`, writes `dist/`.
+- `pnpm dev`: `tsup --watch`.
+- `pnpm typecheck`: `tsgo --noEmit`.
+- `pnpm test`: `vitest run`.
+- `pnpm clean`: removes `dist`.
 
-Peer dependencies are `ai` ^7 and `@ai-sdk/provider` ^4. The package depends on `@anyr/sdk`.
+## Dependency contract
 
-## Related docs
+- Peer dependencies are `ai` ^7 and `@ai-sdk/provider` ^4 plus `@ai-sdk/provider-utils` ^5 and `zod`.
+- The package depends on `@anyr/sdk` `^0.1.3` (published). Only `AnyRouter` and `DEFAULT_BASE_URL` are used from the SDK; attribution is vendored so the package loads against the published SDK.
+- Do not reintroduce imports of `buildAppAttributionHeaders` or `AppAttribution` from `@anyr/sdk` until the published SDK exports them.
 
-- `docs/kb/development/anyr-sdk-packages.md`: how the published packages are built and shipped.
-- `docs/kb/development/playground-build-needs-sdk-dist.md`: consumers need both SDK dists before bundling.
-- `docs/kb/development/coverage-run-needs-sdk-package-builds.md`: coverage runs resolve against `dist/`.
-- `docs/kb/development/changelog-docs-generated-from-package-changelogs.md`: `CHANGELOG.md` feeds the docs pages.
-- `docs/kb/development/cli-otui-helpers-lazy-provider.md`: keep the provider import dynamic in CLI helpers.
+## Publishing
+
+Release 0.1.7 shipped from this repo. Future versions: bump `package.json`, update `CHANGELOG.md`, push a tag `v<version>`. The `publish` workflow builds, tests, and runs `npm publish --access public` with the `NPM_TOKEN` secret (`--provenance` when available).

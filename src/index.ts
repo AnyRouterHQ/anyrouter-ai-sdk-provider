@@ -22,6 +22,8 @@
  * @packageDocumentation
  */
 
+export type { AppAttribution } from "./app-attribution"
+export { PROVIDER_ATTRIBUTION, buildAppAttributionHeaders } from "./app-attribution"
 export type { AnyRouterChatConfig } from "./anyrouter-chat-language-model"
 export { AnyRouterChatLanguageModel } from "./anyrouter-chat-language-model"
 export type { AnyRouterEmbeddingConfig } from "./anyrouter-embedding-model"

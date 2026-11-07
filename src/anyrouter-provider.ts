@@ -1,7 +1,8 @@
 import type { EmbeddingModelV4, FilesV4, LanguageModelV4, ProviderV4 } from "@ai-sdk/provider"
 import { NoSuchModelError } from "@ai-sdk/provider"
 import { combineHeaders, loadApiKey, withoutTrailingSlash } from "@ai-sdk/provider-utils"
-import { AnyRouter, buildAppAttributionHeaders, DEFAULT_BASE_URL } from "@anyr/sdk"
+import { AnyRouter, DEFAULT_BASE_URL } from "@anyr/sdk"
+import { buildAppAttributionHeaders } from "./app-attribution"
 import { AnyRouterChatLanguageModel } from "./anyrouter-chat-language-model"
 import { AnyRouterEmbeddingModel } from "./anyrouter-embedding-model"
 import { AnyRouterFiles } from "./anyrouter-files"
@@ -156,11 +157,14 @@ export function createAnyRouter(options: AnyRouterProviderSettings = {}): AnyRou
     enumerable: true,
     configurable: true,
     get(): AnyRouter {
+      // `@anyr/sdk@0.1.3` has no `app` option (attribution helpers are vendored
+      // in this package), so only the base client options are forwarded. The
+      // provider's own chat/embedding requests still carry attribution via
+      // getHeaders(); the raw client escape hatch does not.
       return new AnyRouter({
         apiKey: options.apiKey,
         baseURL: options.baseURL,
         headers: options.headers,
-        app: options.app,
         fetch: options.fetch,
       })
     },
