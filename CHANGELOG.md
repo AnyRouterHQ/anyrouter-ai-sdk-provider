@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.8](https://github.com/AnyRouterHQ/anyrouter-ai-sdk-provider/compare/v0.1.7...v0.1.8) (2026-11-07)
+
+
+### ✨ Features
+
+* support latest AI SDK with stream uploads and decisions ([a8b7849](https://github.com/AnyRouterHQ/anyrouter-ai-sdk-provider/commit/a8b7849d2fd7a217b22ee7d18b2cc324691cc3fb))
+
 ## [0.1.7](https://github.com/AnyRouterHQ/anyrouter-ai-sdk-provider/compare/v0.1.6...v0.1.7) (2026-11-07)
 
 First release from the standalone repo `AnyRouterHQ/anyrouter-ai-sdk-provider`. The code moved from the `packages/ai-sdk-provider` folder in the `anyrouter` monorepo with its full related history (38 commits). This release supersedes the unpublished monorepo 0.1.7–1.0.3 line. It works with the published `@anyr/sdk@0.1.3`: the app-attribution helper (`buildAppAttributionHeaders`) is vendored in this package because the published SDK does not export it (the previous `0.1.6` tarball import would fail at load).
