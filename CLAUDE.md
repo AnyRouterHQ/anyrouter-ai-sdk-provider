@@ -16,6 +16,7 @@ Standalone repo. Moved from `packages/ai-sdk-provider` in the `anyrouter` monore
 |------|----------------|
 | `src/anyrouter-provider.ts` | Provider factory and model constructors |
 | `src/anyrouter-chat-language-model.ts` | Chat language model |
+| `src/anyrouter-decision-model.ts` | Decision model for `experimental_decide` (Choice, Score, Boolean via gateway `/decisions`) |
 | `src/anyrouter-embedding-model.ts` | Embedding model |
 | `src/anyrouter-files.ts` | File input handling |
 | `src/file-reference-cache.ts` | Cache for file references |
@@ -42,4 +43,4 @@ From `package.json` scripts:
 
 ## Publishing
 
-Release 0.1.7 shipped from this repo. Future versions: bump `package.json`, update `CHANGELOG.md`, push a tag `v<version>`. The `publish` workflow builds, tests, and runs `npm publish --access public` with the `NPM_TOKEN` secret (`--provenance` when available).
+Release 0.1.7 shipped from this repo. Future versions go through release-please (`feat:`/`fix:` commits on main open a release PR that bumps `package.json` and `CHANGELOG.md`). Merging it tags the version, and the `publish` workflow publishes via OIDC trusted publishing (no `NPM_TOKEN` secret). Push a `v<version>` tag to publish immediately.

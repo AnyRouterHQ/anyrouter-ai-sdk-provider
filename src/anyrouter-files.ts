@@ -45,10 +45,17 @@ export class AnyRouterFiles implements FilesV4 {
    * the hash check prevents redundant re-encoding.
    */
   async uploadFile(options: FilesV4UploadFileCallOptions): Promise<FilesV4UploadFileResult> {
-    const hash = await hashFileData(options.data)
+    // Support streaming uploads (`{ type: 'stream', stream }`, @ai-sdk/provider
+    // >= 4.0.36): the cache keys on content hash, so buffer the stream first.
+    let data = options.data
+    if (data.type === "stream") {
+      const bytes = await readAllBytes(data.stream, options.abortSignal)
+      data = { type: "data", data: bytes }
+    }
+    const hash = await hashFileData(data)
 
     if (!this.cache.has(hash)) {
-      const url = fileDataVariantToUrl(options.data, options.mediaType)
+      const url = fileDataVariantToUrl(data, options.mediaType)
       this.cache.set(hash, { url, mediaType: options.mediaType })
     }
 
@@ -59,4 +66,28 @@ export class AnyRouterFiles implements FilesV4 {
       warnings: [],
     }
   }
+}
+
+/** Buffer a byte stream fully. The in-session cache must hash content, so streaming stays zero-copy only for providers that speak the gateway bytes directly. */
+export async function readAllBytes(stream: ReadableStream<Uint8Array>, abortSignal?: AbortSignal): Promise<Uint8Array> {
+  const reader = stream.getReader()
+  const chunks: Uint8Array[] = []
+  try {
+    while (true) {
+      if (abortSignal?.aborted) throw abortSignal.reason ?? new Error("Aborted")
+      const { done, value } = await reader.read()
+      if (done) break
+      chunks.push(value)
+    }
+  } finally {
+    await reader.cancel().catch(() => {})
+  }
+  const total = chunks.reduce((sum, chunk) => sum + chunk.length, 0)
+  const out = new Uint8Array(total)
+  let offset = 0
+  for (const chunk of chunks) {
+    out.set(chunk, offset)
+    offset += chunk.length
+  }
+  return out
 }

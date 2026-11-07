@@ -3,7 +3,8 @@
 The [AnyRouter](https://anyrouter.dev) provider for the [Vercel AI SDK](https://ai-sdk.dev).
 
 Call every model on the AnyRouter gateway through the standard AI SDK
-interface — `generateText`, `streamText`, `generateObject`, `embedMany` —
+interface — `generateText`, `streamText`, `generateObject`, `embedMany`,
+`experimental_decide` —
 with one key and one provider.
 
 ## Install
@@ -147,6 +148,43 @@ const { embeddings } = await embedMany({
 console.log(embeddings[0]) // [0.123, -0.456, ...]
 ```
 
+### Decisions (`experimental_decide`)
+
+Ask Choice, Score, or Boolean questions against shared state in one call.
+The model routes through the gateway decisions endpoint (`POST /decisions`).
+Box questions are not supported by the gateway.
+
+```ts
+import { createAnyRouter } from "@anyr/ai-sdk-provider"
+import { experimental_decide } from "ai"
+
+const anyrouter = createAnyRouter()
+
+const result = await experimental_decide({
+  model: anyrouter.decisionModel("typesafe/jev"),
+  state: { message: "I was charged twice." },
+  questions: {
+    department: {
+      type: "choice",
+      instructions: "Which team should handle this?",
+      criteria: { billing: "Charges and refunds", support: "Other requests" },
+    },
+    refund: {
+      type: "boolean",
+      instructions: "Is the customer asking for a refund?",
+    },
+  },
+})
+
+console.log(result.answers.department) // { type: "choice", choice: "billing", probabilities: { billing: 0.9, support: 0.1 } }
+console.log(result.answers.refund) // { type: "boolean", probability: 0.92 }
+```
+
+State may be text, JSON, or an array of text, JSON, and file parts. File
+parts are sent as gateway `images` (`{ mediaType, base64 }`) and only reach
+backends that support them. Boolean answers return `probability` (P(true)).
+Score answers return a fractional `score` in `[0, levels - 1]`.
+
 ### Provider options (routing, session, extra body)
 
 ```ts
@@ -206,10 +244,11 @@ const anyrouter = createAnyRouter({
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `anyrouter(modelId)` | `LanguageModelV3` | Shorthand for `anyrouter.chat(modelId)` |
-| `anyrouter.chat(modelId)` | `LanguageModelV3` | Chat / instruction language model |
-| `anyrouter.languageModel(modelId)` | `LanguageModelV3` | Alias for `.chat()` (ProviderV3 interface) |
-| `anyrouter.embeddingModel(modelId)` | `EmbeddingModelV3` | Text embedding model |
+| `anyrouter(modelId)` | `LanguageModelV4` | Shorthand for `anyrouter.chat(modelId)` |
+| `anyrouter.chat(modelId)` | `LanguageModelV4` | Chat / instruction language model |
+| `anyrouter.languageModel(modelId)` | `LanguageModelV4` | Alias for `.chat()` (ProviderV4 interface) |
+| `anyrouter.embeddingModel(modelId)` | `EmbeddingModelV4` | Text embedding model |
+| `anyrouter.decisionModel(modelId)` | `DecisionModelV4` | Decision model for `experimental_decide` (Choice, Score, Boolean) |
 | `anyrouter.client` | `AnyRouter` | Raw `@anyr/sdk` client (escape hatch) |
 
 ## Default export

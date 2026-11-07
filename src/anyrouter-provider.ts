@@ -1,9 +1,16 @@
-import type { EmbeddingModelV4, FilesV4, LanguageModelV4, ProviderV4 } from "@ai-sdk/provider"
+import type {
+  EmbeddingModelV4,
+  Experimental_DecisionModelV4 as DecisionModelV4,
+  FilesV4,
+  LanguageModelV4,
+  ProviderV4,
+} from "@ai-sdk/provider"
 import { NoSuchModelError } from "@ai-sdk/provider"
 import { combineHeaders, loadApiKey, withoutTrailingSlash } from "@ai-sdk/provider-utils"
 import { AnyRouter, DEFAULT_BASE_URL } from "@anyr/sdk"
 import { buildAppAttributionHeaders } from "./app-attribution"
 import { AnyRouterChatLanguageModel } from "./anyrouter-chat-language-model"
+import { AnyRouterDecisionModel } from "./anyrouter-decision-model"
 import { AnyRouterEmbeddingModel } from "./anyrouter-embedding-model"
 import { AnyRouterFiles } from "./anyrouter-files"
 import { FileReferenceCache } from "./file-reference-cache"
@@ -41,6 +48,22 @@ export interface AnyRouterProvider extends ProviderV4 {
    * ```
    */
   files(): FilesV4
+
+  /**
+   * Decision model for `experimental_decide` (Choice, Score, Boolean).
+   *
+   * Calls the gateway `POST {baseURL}/decisions`. Box questions are not
+   * supported by the gateway and are rejected before any I/O by the Core.
+   * ```ts
+   * import { experimental_decide } from "ai"
+   * const answer = await experimental_decide({
+   *   model: anyrouter.decisionModel("typesafe/jev"),
+   *   state: "I was charged twice.",
+   *   questions: { refund: { type: "boolean", instructions: "Is the customer asking for a refund?" } },
+   * })
+   * ```
+   */
+  decisionModel(modelId: string): DecisionModelV4
 }
 
 /**
@@ -110,6 +133,15 @@ export function createAnyRouter(options: AnyRouterProviderSettings = {}): AnyRou
     })
   }
 
+  function decisionModel(modelId: string): AnyRouterDecisionModel {
+    return new AnyRouterDecisionModel(modelId, {
+      provider: PROVIDER_ID,
+      baseURL,
+      headers: getHeaders,
+      fetch: options.fetch,
+    })
+  }
+
   /**
    * The callable provider — calling it directly returns a chat model.
    */
@@ -125,6 +157,10 @@ export function createAnyRouter(options: AnyRouterProviderSettings = {}): AnyRou
     },
     embeddingModel(modelId: string): EmbeddingModelV4 {
       return embeddingModel(modelId)
+    },
+
+    decisionModel(modelId: string): AnyRouterDecisionModel {
+      return decisionModel(modelId)
     },
 
     // AnyRouter convenience alias
